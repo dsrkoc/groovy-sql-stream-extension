@@ -1,0 +1,42 @@
+
+apply plugin: 'java'
+apply plugin: 'groovy'
+apply from: 'http://hg/config/gradle-scripts/raw-file/tip/hxmaven.gradle'
+apply plugin: 'idea'
+
+version = '0.4.1'
+
+dependencies {
+    compile "org.codehaus.groovy:groovy-all:2.1.8"
+    testCompile 'org.spockframework:spock-core:0.7-groovy-2.0'
+    testCompile 'cglib:cglib-nodep:2.2.2' // zbog Spock Stub()
+    runtime "com.informix:ifxjdbc:3.70.JC6" // testRuntime, an in-memory database
+}
+
+def metaServices = new File('src/main/resources/META-INF/services')
+
+task generateModule << {
+    metaServices.mkdirs()
+    new File(metaServices, 'org.codehaus.groovy.runtime.ExtensionModule').withWriter { out ->
+        out.writeLine 'moduleName=groovy-sql-stream'
+        out.writeLine "moduleVersion=$version"
+        out.writeLine 'extensionClasses=hr.helix.sqlstream.SqlStreamExtension'
+        out.writeLine 'staticExtensionClasses='
+    }
+}
+
+compileGroovy.dependsOn(generateModule)
+test.dependsOn(jar)
+uploadArchives.dependsOn(test)
+
+// task console (dependsOn: 'classes', type: JavaExec) {
+//     main = 'groovy.ui.Console'
+//     classpath = sourceSets.main.runtimeClasspath
+// }
+
+// task run (dependsOn: 'classes', type: JavaExec) {
+//     main = 'Runner'
+//     classpath = sourceSets.main.runtimeClasspath
+// }
+
+wrapper { gradleVersion = '1.8' }
