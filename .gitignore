@@ -1,0 +1,4 @@
+# gradle related
+/.gradle
+/build
+/src/main/resources
