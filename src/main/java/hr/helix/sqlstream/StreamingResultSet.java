@@ -190,7 +190,7 @@ public class StreamingResultSet {
         while (groovyRS.next()) {
             StatVal sv = compute.call(new StatVal(groovyRS));
 
-            if (sv.getStat() == Status.STOP_STEP) sv.exportTo(values);
+            if (sv.getStat() == Status.OK) sv.exportTo(values);
             if (sv.getStat() == Status.STOP_ITER) break;
         }
 
