@@ -156,8 +156,10 @@ class StreamingResultSetSpec extends Specification {
         def lst = []
         for (it in svs) {
             def sv = fn.call(it)
-            if (sv.getStat() == SRR.Status.OK) sv.exportTo(lst)
-            if (sv.getStat() == SRR.Status.STOP_ITER) break
+            if (sv.getStat() == SRR.Status.OK)
+                sv.exportTo(lst)
+            else if (sv.getStat() == SRR.Status.STOP_ITER)
+                break
         }
         lst
     }

@@ -49,18 +49,12 @@ public class StreamingResultSet {
             ArrayList<Object> vals = new ArrayList<Object>();
             for (Object x : f.call(sv.getValue())) {
                 final StatVal _sv = apply(new StatVal(x));
-                System.out.println("DEBUG: collectMany origval=" + sv.getValue() + ", newval=" + x + ", val=" + _sv.getValue() + ", status=" + _sv.getStat());
-                if (_sv.getStat() == Status.OK) _sv.exportTo(vals);
-                if (_sv.getStat() == Status.STOP_ITER) break;
-/*
-                switch (_sv.getStat()) {
-                    case OK       : _sv.exportTo(vals); break;
-                    case STOP_ITER: return _sv;
-                }
-*/
+                if (_sv.getStat() == Status.OK)
+                    _sv.exportTo(vals);
+                else if (_sv.getStat() == Status.STOP_ITER)
+                    break;
             }
 
-            System.out.println("       returned values=" + vals);
             return new FlatStatVal(vals);
         }
     }
@@ -92,7 +86,6 @@ public class StreamingResultSet {
         public Take(int n) { this.n = n; }
 
         @Override public StatVal call(StatVal sv) {
-            System.out.println("DEBUG: take n=" + n + ", status=" + sv.getStat() + ", value=" + sv.getValue());
             if (n == 0) {
                 return sv.getStat() == Status.STOP_ITER ? sv : sv.putStat(Status.STOP_ITER);
             } else {
@@ -190,8 +183,10 @@ public class StreamingResultSet {
         while (groovyRS.next()) {
             StatVal sv = compute.call(new StatVal(groovyRS));
 
-            if (sv.getStat() == Status.OK) sv.exportTo(values);
-            if (sv.getStat() == Status.STOP_ITER) break;
+            if (sv.getStat() == Status.OK)
+                sv.exportTo(values);
+            else if (sv.getStat() == Status.STOP_ITER)
+                break;
         }
 
         return this;
