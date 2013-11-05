@@ -26,8 +26,6 @@ public class SqlWrapper {
     private static Method closeResources;
     private static Method getParameters;
     private static Method asSql;
-    private static Method singletonList;
-    private static Method moveCursor;
 
     private static NoSuchMethodException initializationException = null;
 
@@ -41,8 +39,6 @@ public class SqlWrapper {
             closeResources       = Sql.class.getDeclaredMethod("closeResources", Connection.class, Statement.class, ResultSet.class);
             getParameters        = Sql.class.getDeclaredMethod("getParameters", GString.class);
             asSql                = Sql.class.getDeclaredMethod("asSql", GString.class, List.class);
-            singletonList        = Sql.class.getDeclaredMethod("singletonList", Object.class);
-            moveCursor           = Sql.class.getDeclaredMethod("moveCursor", ResultSet.class, int.class);
 
             createConnection.setAccessible(true);
             getStatement.setAccessible(true);
@@ -50,8 +46,6 @@ public class SqlWrapper {
             closeResources.setAccessible(true);
             getParameters.setAccessible(true);
             asSql.setAccessible(true);
-            singletonList.setAccessible(true);
-            moveCursor.setAccessible(true);
         } catch (NoSuchMethodException e) {
             initializationException = e; // if any problem arises, store it until SqlWrapper is used
         }
@@ -84,16 +78,8 @@ public class SqlWrapper {
         return (String) invoke(asSql, gString, values);
     }
 
-    public List<?> singletonList(Object item) {
-        return (List) invoke(singletonList, item);
-    }
-
     public PreparedStatement getPreparedStatement(Connection connection, String query, List<?> params) throws SQLException {
         return (PreparedStatement) invokeEx(getPreparedStatement, connection, query, params);
-    }
-
-    public boolean moveCursor(ResultSet results, int offset) throws SQLException {
-        return (Boolean) invokeEx(moveCursor, results, offset);
     }
 
     private Object invoke(Method method, Object... params) {
