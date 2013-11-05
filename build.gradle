@@ -4,13 +4,15 @@ apply plugin: 'groovy'
 apply from: 'http://hg/config/gradle-scripts/raw-file/tip/hxmaven.gradle'
 apply plugin: 'idea'
 
-version = '0.4.1'
+version = '0.4.2'
+group = 'hr.helix.sqlstream'
+archivesBaseName = 'groovy-sql-stream-extension'
 
 dependencies {
     compile "org.codehaus.groovy:groovy-all:2.1.8"
     testCompile 'org.spockframework:spock-core:0.7-groovy-2.0'
-    testCompile 'cglib:cglib-nodep:2.2.2' // zbog Spock Stub()
-    runtime "com.informix:ifxjdbc:3.70.JC6" // testRuntime, an in-memory database
+    testCompile 'cglib:cglib-nodep:2.2.2' // used by Spock Stub()
+//    testRuntime "com.informix:ifxjdbc:3.70.JC6" // should be an in-memory database
 }
 
 def metaServices = new File('src/main/resources/META-INF/services')
