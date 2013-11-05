@@ -5,6 +5,7 @@ import groovy.lang.GString;
 import groovy.sql.Sql;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -70,7 +71,7 @@ public class SqlStreamExtension {
     }
 
     public static <T> T withStream(Sql self, Map params, String sql, Closure metaClosure, Closure<T> streamClosure) throws SQLException {
-        return withStream(self, sql, createWrapper(self).singletonList(params), metaClosure, streamClosure);
+        return withStream(self, sql, singletonList(params), metaClosure, streamClosure);
     }
 
     public static <T> T withStream(Sql self, String sql, List<Object> params, Closure<T> streamClosure) throws SQLException {
@@ -103,7 +104,7 @@ public class SqlStreamExtension {
     }
 
     public static <T> T withStream(Sql self, String sql, Map params, Closure metaClosure, Closure<T> streamClosure) throws SQLException {
-        return withStream(self, sql, createWrapper(self).singletonList(params), metaClosure, streamClosure);
+        return withStream(self, sql, singletonList(params), metaClosure, streamClosure);
     }
 
     private static SqlWrapper createWrapper(Sql sql) {
@@ -114,6 +115,12 @@ public class SqlStreamExtension {
             throw new RuntimeException(e); // indicates a bug in SqlWrapper initialization, not expected to happen
         }
         return sqlWrapper;
+    }
+
+    private static ArrayList<Object> singletonList(Object item) { // lifted from groovy.sql.Sql#singletonList(Object)
+        ArrayList<Object> params = new ArrayList<Object>();
+        params.add(item);
+        return params;
     }
 
 }
