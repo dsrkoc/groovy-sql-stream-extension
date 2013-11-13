@@ -76,11 +76,34 @@ class StreamingResultSetSpec extends Specification {
         force(toSVs(input), fn) == expected
     }
 
+    def 'test takeWhile'() {
+        given:
+        def fn1 = new SRR.Fn().andThen(new SRR.TakeWhile({ it < 4 }))
+        def fn2 = new SRR.Fn().andThen(new SRR.TakeWhile({ it % 2 == 0 }))
+        def input     = [1, 2, 3, 4, 5, 6]
+        def expected1 = [1, 2, 3]
+        def expected2 = []
+
+        expect:
+        force(toSVs(input), fn1) == expected1
+        force(toSVs(input), fn2) == expected2
+    }
+
+    def 'test dropWhile'() {
+        given:
+        def fn = calc.andThen(new SRR.DropWhile({ it < 4 }))
+        def input    = [1, 2, 3, 4, 5, 6]
+        def expected = [4, 5, 6]
+
+        expect:
+        force(toSVs(input), fn) == expected
+    }
+
     def 'test findAll'() {
         given:
-        def fn = calc.andThen(new SRR.FindAll({ it < 4 }))
+        def fn = calc.andThen(new SRR.FindAll({ it % 2 == 0 }))
         def input    = [1, 2, 3, 4, 5, 6]
-        def expected = [1, 2, 3]
+        def expected = [2, 4, 6]
 
         expect:
         force(toSVs(input), fn) == expected
@@ -144,6 +167,18 @@ class StreamingResultSetSpec extends Specification {
                      .andThen(new SRR.Drop(2)) // 4..5
         def input    = 1..10
         def expected = [4, 5]
+
+        expect:
+        force(toSVs(input), fn) == expected
+    }
+
+    def 'test takeWhile.collect.dropWhile'() {
+        given:
+        def fn = calc.andThen(new SRR.TakeWhile({ it < 8 }))              //  1 .. 7
+                     .andThen(new SRR.Collect<String>({ it.toString() })) // '1'..'7'
+                     .andThen(new SRR.DropWhile({ it < '4' }))            // '4'..'7'
+        def input    = 1..10
+        def expected = '4'..'7'
 
         expect:
         force(toSVs(input), fn) == expected

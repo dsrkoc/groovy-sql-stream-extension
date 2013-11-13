@@ -95,6 +95,21 @@ public class StreamingResultSet {
         }
     }
 
+    private static class TakeWhile extends Fn {
+        private Closure<Boolean> p;
+        private boolean done = false;
+
+        public TakeWhile(Closure<Boolean> p) { this.p = p; }
+
+        @Override public StatVal call(StatVal sv) {
+            if (done || (done = !p.call(sv.getValue()))) {
+                return sv.getStat() == Status.STOP_ITER ? sv : sv.putStat(Status.STOP_ITER);
+            } else {
+                return apply(sv);
+            }
+        }
+    }
+
     private static class Drop extends Fn {
         private int n;
 
@@ -105,6 +120,21 @@ public class StreamingResultSet {
                 return apply(sv.getStat() == Status.STOP_STEP ? sv.putStat(Status.OK) : sv);
             } else {
                 --n;
+                return sv.getStat() == Status.OK ? sv.putStat(Status.STOP_STEP) : sv;
+            }
+        }
+    }
+
+    private static class DropWhile extends Fn {
+        private Closure<Boolean> p;
+        private boolean done = false;
+
+        public DropWhile(Closure<Boolean> p) { this.p = p; }
+
+        @Override public StatVal call(StatVal sv) {
+            if (done || (done = !p.call(sv.getValue()))) {
+                return apply(sv.getStat() == Status.STOP_STEP ? sv.putStat(Status.OK) : sv);
+            } else {
                 return sv.getStat() == Status.OK ? sv.putStat(Status.STOP_STEP) : sv;
             }
         }
@@ -161,6 +191,10 @@ public class StreamingResultSet {
     public StreamingResultSet take(int n) { return next(new Take(n)); }
 
     public StreamingResultSet drop(int n) { return next(new Drop(n)); }
+
+    public StreamingResultSet takeWhile(Closure<Boolean> p) { return next(new TakeWhile(p)); }
+
+    public StreamingResultSet dropWhile(Closure<Boolean> p) { return next(new DropWhile(p)); }
 
     private StreamingResultSet next(Fn that) {
         return new StreamingResultSet(rs, compute.andThen(that));
