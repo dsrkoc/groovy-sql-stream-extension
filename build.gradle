@@ -1,5 +1,5 @@
 
-apply plugin: 'java'
+// apply plugin: 'java'
 apply plugin: 'groovy'
 apply from: 'http://hg/config/gradle-scripts/raw-file/tip/hxmaven.gradle'
 apply plugin: 'idea'
@@ -41,4 +41,4 @@ uploadArchives.dependsOn(test)
 //     classpath = sourceSets.main.runtimeClasspath
 // }
 
-wrapper { gradleVersion = '1.8' }
+wrapper { gradleVersion = '1.10' }
