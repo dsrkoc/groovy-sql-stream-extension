@@ -1,12 +1,14 @@
-
-// apply plugin: 'java'
 apply plugin: 'groovy'
-apply from: 'http://hg/config/gradle-scripts/raw-file/tip/hxmaven.gradle'
+apply plugin: 'maven'
 apply plugin: 'idea'
 
 version = '0.4.2'
 group = 'hr.helix.sqlstream'
 archivesBaseName = 'groovy-sql-stream-extension'
+
+repositories {
+    mavenCentral()
+}
 
 dependencies {
     compile "org.codehaus.groovy:groovy-all:2.1.8"
