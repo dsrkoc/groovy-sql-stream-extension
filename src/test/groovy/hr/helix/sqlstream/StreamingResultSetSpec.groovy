@@ -35,15 +35,16 @@ class StreamingResultSetSpec extends Specification {
     def 'test collectMany'() {
         given:
         def fn = calc.andThen(new SRR.CollectMany<List>({ [it * it] }))
-        def sv = new SRR.StatVal(2)
+        def v = new SRR.Value(2)
         def lst = []
 
         when:
-        def res = fn.call(sv)
+        def res = fn.call(v)
         res.exportTo(lst)
 
         then:
-        res.getStat()  == SRR.Status.OK
+//        res.getStat()  == SRR.Status.OK // ****
+        assert res instanceof SRR.Value // **** not good enough as Value can be subclassed
         lst == [4]
     }
 
@@ -53,7 +54,7 @@ class StreamingResultSetSpec extends Specification {
         def expected = [1, 4, 9]
 
         expect:
-        force(toSVs(input), fn) == expected
+        force(toVals(input), fn) == expected
     }
 
     def 'test take'() {
@@ -63,7 +64,7 @@ class StreamingResultSetSpec extends Specification {
         def expected = [1, 2]
 
         expect:
-        force(toSVs(input), fn) == expected
+        force(toVals(input), fn) == expected
     }
 
     def 'test drop'() {
@@ -73,7 +74,7 @@ class StreamingResultSetSpec extends Specification {
         def expected = [3, 4]
 
         expect:
-        force(toSVs(input), fn) == expected
+        force(toVals(input), fn) == expected
     }
 
     def 'test takeWhile'() {
@@ -85,8 +86,8 @@ class StreamingResultSetSpec extends Specification {
         def expected2 = []
 
         expect:
-        force(toSVs(input), fn1) == expected1
-        force(toSVs(input), fn2) == expected2
+        force(toVals(input), fn1) == expected1
+        force(toVals(input), fn2) == expected2
     }
 
     def 'test dropWhile'() {
@@ -96,7 +97,7 @@ class StreamingResultSetSpec extends Specification {
         def expected = [4, 5, 6]
 
         expect:
-        force(toSVs(input), fn) == expected
+        force(toVals(input), fn) == expected
     }
 
     def 'test findAll'() {
@@ -106,7 +107,7 @@ class StreamingResultSetSpec extends Specification {
         def expected = [2, 4, 6]
 
         expect:
-        force(toSVs(input), fn) == expected
+        force(toVals(input), fn) == expected
     }
 
     def 'test each'() {
@@ -117,7 +118,7 @@ class StreamingResultSetSpec extends Specification {
         def expected = [2, 3, 4, 5]
 
         when:
-        force(toSVs(input), fn)
+        force(toVals(input), fn)
 
         then:
         lst == expected
@@ -132,7 +133,7 @@ class StreamingResultSetSpec extends Specification {
         def expected = [4, 6, 8]
 
         expect:
-        force(toSVs(input), fn) == expected
+        force(toVals(input), fn) == expected
     }
 
     def 'test collectMany.collectMany.take'() {
@@ -144,7 +145,7 @@ class StreamingResultSetSpec extends Specification {
         def expected = [1, 2, 3, 4, 5]
 
         expect:
-        force(toSVs(input), fn) == expected
+        force(toVals(input), fn) == expected
     }
 
     def 'test collectMany.findAll.take'() {
@@ -156,7 +157,7 @@ class StreamingResultSetSpec extends Specification {
         def expected = [2, 4, 6]
 
         expect:
-        force(toSVs(input), fn) == expected
+        force(toVals(input), fn) == expected
     }
 
     def 'test take.drop.take.drop'() {
@@ -169,7 +170,7 @@ class StreamingResultSetSpec extends Specification {
         def expected = [4, 5]
 
         expect:
-        force(toSVs(input), fn) == expected
+        force(toVals(input), fn) == expected
     }
 
     def 'test takeWhile.collect.dropWhile'() {
@@ -181,19 +182,18 @@ class StreamingResultSetSpec extends Specification {
         def expected = '4'..'7'
 
         expect:
-        force(toSVs(input), fn) == expected
+        force(toVals(input), fn) == expected
     }
 
-    private static List<SRR.StatVal> toSVs(List xs) { xs.collect { new SRR.StatVal(it) }}
+    private static List<SRR.Value> toVals(List xs) { xs.collect { new SRR.Value(it) }}
 
     // NOTE: implementation of this method should always be in sync with StreamingResultSet.force()
-    private static List force(List<SRR.StatVal> svs, SRR.Fn fn) {
+    private static List force(List<SRR.Value> svs, SRR.Fn fn) {
         def lst = []
         for (it in svs) {
-            def sv = fn.call(it)
-            if (sv.getStat() == SRR.Status.OK)
-                sv.exportTo(lst)
-            else if (sv.getStat() == SRR.Status.STOP_ITER)
+            def v = fn.call(it)
+            v.exportTo(lst)
+            if (v.terminate())
                 break
         }
         lst
