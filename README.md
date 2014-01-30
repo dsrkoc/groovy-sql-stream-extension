@@ -10,7 +10,9 @@ processing of a large data set.
 Getting started
 ---------------
 
-???
+1. clone the project
+2. run `./gradlew build`
+3. put the jar on the classpath
 
 Examples
 --------
@@ -70,6 +72,10 @@ sql.withStream('...') { stream ->
     }.toList()
 }
 ```
+
+*Note on efficiency*: using `withStream()` may still be slightly less efficient than `eachRow()`,
+depending on the respective implementation. However, it will typically be more efficient
+then using `rows()` by a wider margin.
 
 API
 ---
