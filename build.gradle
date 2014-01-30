@@ -1,9 +1,13 @@
 apply plugin: 'groovy'
 apply plugin: 'maven'
+apply plugin: 'signing'
 apply plugin: 'idea'
 
+sourceCompatibility=1.6
+targetCompatibility=1.6
+
 version = '0.4.3'
-group = 'hr.helix.sqlstream'
+group = 'hr.helix'
 archivesBaseName = 'groovy-sql-stream-extension'
 
 repositories {
@@ -15,7 +19,6 @@ dependencies {
     testCompile 'org.spockframework:spock-core:0.7-groovy-2.0'
     testCompile 'cglib:cglib-nodep:2.2.2' // used by Spock Stub()
     testRuntime 'com.h2database:h2:1.3.175'
-//    testRuntime "com.informix:ifxjdbc:3.70.JC6" // should be an in-memory database
 }
 
 def metaServices = new File('src/main/resources/META-INF/services')
@@ -33,6 +36,81 @@ task generateModule << {
 compileGroovy.dependsOn(generateModule)
 test.dependsOn(jar)
 uploadArchives.dependsOn(test)
+
+javadoc {
+  options.header = '<a href="https://github.com/dsrkoc/groovy-sql-stream-extension">groovy-sql-stream-extension</a>'
+  options.links 'http://groovy.codehaus.org/api/'
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+  classifier 'javadoc'
+  from 'build/docs/javadoc'
+}
+
+task sourcesJar(type: Jar) {
+  from sourceSets.main.allSource
+  classifier = 'sources'
+}
+
+artifacts {
+  archives jar
+  archives sourcesJar
+  archives javadocJar
+}
+
+if( !hasProperty( 'sonatypeUsername' ) ) {
+    ext.sonatypeUsername = ''
+}
+
+if( !hasProperty( 'sonatypePassword' ) ) {
+    ext.sonatypePassword = ''
+}
+
+signing {
+  sign configurations.archives
+}
+
+uploadArchives {
+  repositories {
+    mavenDeployer {
+      beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+ 
+      repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+        authentication(userName: sonatypeUsername, password: sonatypePassword)
+      }
+ 
+      pom.project {
+        name 'Groovy Sql Stream Extension'
+        packaging 'jar'
+        description 'A collection of extensions to Groovy 2+.'
+        url 'https://github.com/dsrkoc/groovy-sql-stream-extension'
+        inceptionYear '2013'
+
+        scm {
+          url 'https://github.com/dsrkoc/groovy-sql-stream-extension'
+          connection 'scm:https://github.com/dsrkoc/groovy-sql-stream-extension.git'
+          developerConnection 'scm:git://github.com/dsrkoc/groovy-sql-stream-extension.git'
+        }
+
+        licenses {
+          license {
+            name 'The Apache Software License, Version 2.0'
+            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+            distribution 'repo'
+          }
+        }
+
+        developers {
+          developer {
+            id 'dsrkoc'
+            name 'Dinko Srkoč'
+            email 'dinko.srkoc@gmail.com'
+          }
+        }
+      }
+    }
+  }
+}
 
 // task console (dependsOn: 'classes', type: JavaExec) {
 //     main = 'groovy.ui.Console'
