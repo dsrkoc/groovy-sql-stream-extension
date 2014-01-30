@@ -37,25 +37,27 @@ compileGroovy.dependsOn(generateModule)
 test.dependsOn(jar)
 uploadArchives.dependsOn(test)
 
+jar { from 'LICENSE.txt' }
+
 javadoc {
-  options.header = '<a href="https://github.com/dsrkoc/groovy-sql-stream-extension">groovy-sql-stream-extension</a>'
-  options.links 'http://groovy.codehaus.org/api/'
+    options.header = '<a href="https://github.com/dsrkoc/groovy-sql-stream-extension">groovy-sql-stream-extension</a>'
+    options.links 'http://groovy.codehaus.org/api/'
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
-  classifier 'javadoc'
-  from 'build/docs/javadoc'
+    classifier 'javadoc'
+    from 'build/docs/javadoc'
 }
 
 task sourcesJar(type: Jar) {
-  from sourceSets.main.allSource
-  classifier = 'sources'
+    from sourceSets.main.allSource, 'LICENSE.txt' 
+    classifier = 'sources'
 }
 
 artifacts {
-  archives jar
-  archives sourcesJar
-  archives javadocJar
+    archives jar
+    archives sourcesJar
+    archives javadocJar
 }
 
 if( !hasProperty( 'sonatypeUsername' ) ) {
@@ -67,7 +69,7 @@ if( !hasProperty( 'sonatypePassword' ) ) {
 }
 
 signing {
-  sign configurations.archives
+    sign configurations.archives
 }
 
 uploadArchives {
