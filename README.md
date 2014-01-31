@@ -10,6 +10,14 @@ processing of a large data set.
 Getting started
 ---------------
 
+For the extension module to be functional, Groovy 2.0 is required.
+
+Usage:
+
+    @Grab('hr.helix:groovy-sql-stream-extension:0.4.3')
+
+Building from source:
+
 1. clone the project
 2. run `./gradlew build`
 3. put the jar on the classpath
@@ -82,40 +90,42 @@ API
 
 `groovy-sql-stream-extension` library in its `0.4.3` version supports the following functionalities:
 
-    /*
-     * withStream follows the groovy.sql.Sql API, with the
-     * exception being offset and maxRow parameters, which
-     * can be emulated with methods drop(offset), take(maxRow)
-     */
+```java
+/*
+ * withStream follows the groovy.sql.Sql API, with the
+ * exception being offset and maxRow parameters, which
+ * can be emulated with methods drop(offset), take(maxRow)
+ */
 
-    // executing the query
+// executing the query
 
-    Sql.withStream(String, Closure)
-    Sql.withStream(String, Closure, Closure)
-    Sql.withStream(GString, Closure)
-    Sql.withStream(GString, Closure, Closure)
-    Sql.withStream(Map, String, Closure)
-    Sql.withStream(Map, String, Closure, Closure)
-    Sql.withStream(String, List, Closure)
-    Sql.withStream(String, List, Closure, Closure)
-    Sql.withStream(String, Map, Closure)
-    Sql.withStream(String, Map, Closure, Closure)
+Sql.withStream(String, Closure)
+Sql.withStream(String, Closure, Closure)
+Sql.withStream(GString, Closure)
+Sql.withStream(GString, Closure, Closure)
+Sql.withStream(Map, String, Closure)
+Sql.withStream(Map, String, Closure, Closure)
+Sql.withStream(String, List, Closure)
+Sql.withStream(String, List, Closure, Closure)
+Sql.withStream(String, Map, Closure)
+Sql.withStream(String, Map, Closure, Closure)
 
-    // traversing and processing the data set
+// traversing and processing the data set
 
-    StreamingResultSet.collect(Closure)
-    StreamingResultSet.collectMany(Closure)
-    StreamingResultSet.findAll(Closure<Boolean>)
-    StreamingResultSet.each(Closure)
-    StreamingResultSet.take(int)
-    StreamingResultSet.takeWhile(Closure<Boolean>)
-    StreamingResultSet.drop(int)
-    StreamingResultSet.dropWhile(Closure<Boolean>)
+StreamingResultSet.collect(Closure)
+StreamingResultSet.collectMany(Closure)
+StreamingResultSet.findAll(Closure<Boolean>)
+StreamingResultSet.each(Closure)
+StreamingResultSet.take(int)
+StreamingResultSet.takeWhile(Closure<Boolean>)
+StreamingResultSet.drop(int)
+StreamingResultSet.dropWhile(Closure<Boolean>)
 
-    // forcing the realization of the stream
+// forcing the realization of the stream
 
-    StreamingResultSet.force()
-    StreamingResultSet.toList()
+StreamingResultSet.force()
+StreamingResultSet.toList()
+```
 
 It is important to note that after `withStream()` method returns, the JDBC `ResultSet` will be closed.
 If the stream is not by then realized by invoking `force()` or `toList()`, the data will not be
