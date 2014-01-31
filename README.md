@@ -10,7 +10,7 @@ processing of a large data set.
 Getting started
 ---------------
 
-For the extension module to be functional, Groovy 2.0 is required.
+For the extension module to be functional, Groovy 2.0 or greater is required.
 
 Usage:
 
