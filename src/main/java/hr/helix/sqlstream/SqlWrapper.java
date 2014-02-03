@@ -11,7 +11,7 @@ import java.util.logging.Logger;
 
 /**
  * Allows access to {@code groovy.sql.Sql}'s protected/private members.
- * This is necessary because {@code SqlStreamExtension} could not otherwise
+ * This is necessary because {@link SqlStreamExtension} could not otherwise
  * properly extend {@code Sql} class.
  *
  * @author Dinko Srkoč

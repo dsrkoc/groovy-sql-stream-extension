@@ -9,6 +9,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * Wraps the {@code java.sql.ResultSet} and exposes some common collection methods
+ * which are lazily evaluated. Iterates through the {@code ResultSet} only once,
+ * invoking given methods for each row of the result set. The row will be a
+ * {@code GroovyResultSet} which is a {@code ResultSet} that supports accessing the
+ * fields using property style notation and ordinal index values.
+ *
+ * @author Dinko Srkoč
+ * @since 2013-10-30
+ */
 public class StreamingResultSet {
     private ResultSet rs;
     private Fn compute;
@@ -189,34 +199,102 @@ public class StreamingResultSet {
         this.compute = fn;
     }
 
+    /**
+     * Creates a new {@code StreamingResultSet} instance that wraps the {@code ResultSet}.
+     *
+     * @param rs ResultSet that is wrapped by the newly created StreamingResultSet
+     * @return new instance of StreamingResultSet
+     */
     public static StreamingResultSet from(ResultSet rs) {
         return new StreamingResultSet(rs, new Fn());
     }
 
+    /**
+     * Iterates through the stream transforming each element into a new value
+     * using Closure {@code f}.
+     *
+     * @param f    the Closure used to transform each element of the stream
+     * @return new {@code StreamingResultSet} instance
+     */
     public <T> StreamingResultSet collect(Closure<T> f)  { return next(new Collect<T>(f)); }
 
+    /**
+     * Iterates through the stream transforming each element to a collection and
+     * concatenates (flattens) the resulting collections into a single list.
+     *
+     * @param f      the Closure used to transform each element of the stream
+     * @param <T>    the collection type that Closure {@code f} returns
+     * @return new {@code StreamingResultSet} instance
+     */
     public <T extends Collection> StreamingResultSet collectMany(Closure<T> f) { return next(new CollectMany<T>(f)); }
 
+    /**
+     * Finds all elements matching the given Closure predicate.
+     *
+     * @param p    the Closure that must evaluate to {@code true} for element to be taken
+     * @return new {@code StreamingResultSet} instance
+     */
     public StreamingResultSet findAll(Closure<Boolean> p) { return next(new FindAll(p)); }
 
     /* def find(Closure<Boolean> p) { */
     /*     // ??? */
     /* } */
 
+    /**
+     * Iterates through the stream passing each element to the given Closure {@code f}.
+     *
+     * @param f the Closure applied to each element found
+     * @return new {@code StreamingResultSet} instance
+     */
     public StreamingResultSet each(Closure<Object> f) { return next(new Each(f)); }
 
+    /**
+     * Takes the first {@code n} elements from the head of the stream.
+     *
+     * @param n the number of elements to take from the stream
+     * @return new {@code StreamingResultSet} instance
+     */
     public StreamingResultSet take(int n) { return next(new Take(n)); }
 
+    /**
+     * Drops the given number of elements from the head of the stream if available.
+     *
+     * @param n    the number of elements to drop from the stream
+     * @return new {@code StreamingResultSet} instance
+     */
     public StreamingResultSet drop(int n) { return next(new Drop(n)); }
 
+    /**
+     * Takes the longest prefix of the stream where each element passed to the
+     * given Closure predicate evaluates to {@code true}.
+     *
+     * @param p    the Closure that must evaluate to {@code true} to continue taking elements
+     * @return new {@code StreamingResultSet} instance
+     */
     public StreamingResultSet takeWhile(Closure<Boolean> p) { return next(new TakeWhile(p)); }
 
+    /**
+     * Returns a suffix of the stream where elements are dropped from the front while the
+     * given Closure predicate evaluates to {@code true}.
+     *
+     * @param p    the predicate that must evaluate to {@code true} to continue dropping elements
+     * @return new {@code StreamingResultSet} instance
+     */
     public StreamingResultSet dropWhile(Closure<Boolean> p) { return next(new DropWhile(p)); }
 
     private StreamingResultSet next(Fn that) {
         return new StreamingResultSet(rs, compute.andThen(that));
     }
 
+    /**
+     * Realizes the stream if it is not yet realized. The stream is realized
+     * by iterating over the result set and applying all the given operations.
+     * The resulting entries are collected into a list which can be accessed
+     * by applying {@link StreamingResultSet#toList()} to this {@code StreamingResultSet}.
+     *
+     * @return this {@code StreamingResultSet} that is forced into realization
+     * @throws SQLException if database access error occurs
+     */
     public StreamingResultSet force() throws SQLException {
         if (values != null) return this; // stream is already realized
 
@@ -232,6 +310,14 @@ public class StreamingResultSet {
         return this;
     }
 
+    /**
+     * Returns the list of values computed by the given transformations.
+     * Forces the stream realization if needed.
+     *
+     * @return the list of computed values
+     * @throws SQLException if database access error occurs
+     * @see StreamingResultSet#force()
+     */
     public List<Object> toList() throws SQLException {
         return force().values;
     }
