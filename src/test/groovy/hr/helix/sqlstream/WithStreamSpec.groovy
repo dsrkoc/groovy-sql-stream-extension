@@ -18,6 +18,8 @@ package hr.helix.sqlstream
 import groovy.sql.Sql
 import spock.lang.Specification
 
+import java.sql.ResultSet
+
 /**
  * Compares the performance of withSteam() vs Sql#rows() vs Sql#eachRow()
  *
@@ -114,5 +116,23 @@ class WithStreamSpec extends Specification {
 
         then:
         result.size() == n / 3 + 2
+    }
+
+    def 'test head()'() {
+        when:
+        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            def s2 = stream.collect { it.col_a } // [1, 4, 7, 10, 13, 16, 19, 22, 25, ...]
+            def h2 = s2.head()                   // 1
+            assert s2.head() == h2
+            def s3 = s2.tail()                   // [4, 7, 10, 13, 16, 19, 22, 25, ...]
+            def h3 = s3.head()                   // 4
+            def s4 = s3.drop(3)                  // [13, 16, 19, 22, 25, ...]
+            def h4 = s4.head()                   // 13
+            s4.take(2).toList() + h2 + h3 + h4
+        }
+
+        then:
+        result == [13, 16, 1, 4, 13]
     }
 }

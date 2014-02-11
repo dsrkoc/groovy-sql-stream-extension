@@ -200,6 +200,28 @@ class StreamingResultSetSpec extends Specification {
         force(toVals(input), fn) == expected
     }
 
+    def 'test head'() {
+        given:
+        def fn = calc.andThen(new SRR.Head())
+        def input = 1..10
+        def expected = [1]
+
+        expect:
+        force(toVals(input), fn) == expected
+    }
+
+    def 'test collect.drop.head'() {
+        given:
+        def fn = calc.andThen(new SRR.Collect<String>({ it.toString() }))
+                     .andThen(new SRR.Drop(3))
+                     .andThen(new SRR.Head())
+        def input = 1..10
+        def expected = ['4']
+
+        expect:
+        force(toVals(input), fn) == expected
+    }
+
     private static List<SRR.Value> toVals(List xs) { xs.collect { new SRR.Value(it) }}
 
     // NOTE: implementation of this method should always be in sync with StreamingResultSet.force()
