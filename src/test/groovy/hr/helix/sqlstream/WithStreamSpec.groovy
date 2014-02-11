@@ -26,11 +26,14 @@ import spock.lang.Specification
  */
 class WithStreamSpec extends Specification {
 
+    private static n = 1000002
+//    private static n = 42
+
     Sql sql
     def setup() {
         sql = Sql.newInstance('jdbc:h2:mem:', 'org.h2.Driver')
         sql.execute 'CREATE TABLE a_table (col_a INTEGER, col_b INTEGER, col_c INTEGER)'
-        (1..1000002).collate(3).each {
+        (1..n).collate(3).each {
             sql.execute('INSERT INTO a_table (col_a, col_b, col_c) VALUES (?, ?, ?)', it)
         }
     }
@@ -60,16 +63,16 @@ class WithStreamSpec extends Specification {
         when:
         List result = time('rows') {
             sql.rows('SELECT * FROM a_table').collectMany { row ->
-                [row.col_a + row.col_b, row.col_c * 2]
+                [row.col_a + row.col_b, row.col_c * 2] // [3, 6], [9, 12], [15, 18], [21, 24], ...
             }.collect {
-                it < 10 ? it * 10 : it + 10
+                it < 10 ? it * 10 : it + 10            // 30, 60, 90, 22, 25, 28, 31, 34, ...
             }.findAll {
-                it % 2 == 0
+                it % 2 == 0                            // 30, 60, 90, 22, 28, 34, ...
             }
         }
 
         then:
-        result.size() == 333336
+        result.size() == n / 3 + 2
     }
 
     def 'using Sql.eachRow()'() {
@@ -92,7 +95,7 @@ class WithStreamSpec extends Specification {
         }
 
         then:
-        result.size() == 333336
+        result.size() == n / 3 + 2
     }
 
     def 'using Sql.withStream()'() {
@@ -110,6 +113,6 @@ class WithStreamSpec extends Specification {
         }
 
         then:
-        result.size() == 333336
+        result.size() == n / 3 + 2
     }
 }
