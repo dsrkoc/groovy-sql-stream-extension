@@ -53,6 +53,17 @@ public class StreamingResultSet {
                 next.andThen(that);
             return this;
         }
+
+        /** makes deep copy of this Fn object */
+        public Fn copy() {
+            Fn copied = newInstance();
+            if (next != null) {
+                copied.next = next.copy();
+            }
+            return copied;
+        }
+
+        protected Fn newInstance() { return new Fn(); }
     }
 
     private static class Collect<T> extends Fn {
@@ -63,6 +74,8 @@ public class StreamingResultSet {
         @Override public Value call(Value v) {
             return apply(new Value(f.call(v.getValue())));
         }
+
+        @Override protected Fn newInstance() { return new Collect<T>(f); }
     }
 
     private static class CollectMany<T extends Collection> extends Fn {
@@ -82,6 +95,8 @@ public class StreamingResultSet {
 
             return new FlatValue(vals);
         }
+
+        @Override protected Fn newInstance() { return new CollectMany<T>(f); }
     }
 
     private static class FindAll extends Fn {
@@ -92,6 +107,8 @@ public class StreamingResultSet {
         @Override public Value call(Value v) {
             return p.call(v.getValue()) ? apply(v) : IgnoreValue.INSTANCE;
         }
+
+        @Override protected Fn newInstance() { return new FindAll(p); }
     }
 
     private static class Each extends Fn {
@@ -103,6 +120,8 @@ public class StreamingResultSet {
             f.call(v.getValue());
             return apply(v);
         }
+
+        @Override protected Fn newInstance() { return new Each(f); }
     }
 
     private static class Take extends Fn {
@@ -118,6 +137,8 @@ public class StreamingResultSet {
                 return apply(v);
             }
         }
+
+        @Override protected Fn newInstance() { return new Take(n); }
     }
 
     private static class TakeWhile extends Fn {
@@ -132,6 +153,12 @@ public class StreamingResultSet {
             } else {
                 return apply(v);
             }
+        }
+
+        @Override protected Fn newInstance() {
+            TakeWhile copied =  new TakeWhile(p);
+            copied.done = done;
+            return copied;
         }
     }
 
@@ -148,6 +175,8 @@ public class StreamingResultSet {
                 return IgnoreValue.INSTANCE;
             }
         }
+
+        @Override protected Fn newInstance() { return new Drop(n); }
     }
 
     private static class DropWhile extends Fn {
@@ -162,6 +191,12 @@ public class StreamingResultSet {
             } else {
                 return IgnoreValue.INSTANCE;
             }
+        }
+
+        @Override protected Fn newInstance() {
+            DropWhile copied = new DropWhile(p);
+            copied.done = done;
+            return copied;
         }
     }
 
@@ -178,6 +213,8 @@ public class StreamingResultSet {
         public void exportTo(List<Object> xs) { xs.add(value); }
 
         public boolean terminate() { return false; }
+
+        public boolean ignore() { return false; }
     }
 
     private static class FlatValue extends Value {
@@ -192,6 +229,7 @@ public class StreamingResultSet {
         public static final IgnoreValue INSTANCE = new IgnoreValue();
 
         @Override public void exportTo(List<Object> xs) {}
+        @Override public boolean ignore() { return true; }
     }
 
     private static class TerminateEmpty extends IgnoreValue {
@@ -206,6 +244,7 @@ public class StreamingResultSet {
         public TerminateWithValue(Value v) { this.v = v; }
 
         @Override public boolean terminate() { return true; }
+        @Override public boolean ignore() { return true; }
         @Override public void exportTo(List<Object> xs) { v.exportTo(xs); }
     }
 
