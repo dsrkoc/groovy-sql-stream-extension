@@ -112,7 +112,7 @@ public class StreamingResultSet {
 
         @Override public Value call(Value v) {
             if (n == 0) {
-                return new TerminateEmpty();
+                return TerminateEmpty.INSTANCE;
             } else {
                 --n;
                 return apply(v);
@@ -250,10 +250,6 @@ public class StreamingResultSet {
      * @return new {@code StreamingResultSet} instance
      */
     public StreamingResultSet findAll(Closure<Boolean> p) { return next(new FindAll(p)); }
-
-    /* def find(Closure<Boolean> p) { */
-    /*     // ??? */
-    /* } */
 
     /**
      * Iterates through the stream passing each element to the given Closure {@code f}.
