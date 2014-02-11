@@ -200,6 +200,15 @@ public class StreamingResultSet {
         }
     }
 
+    private static class Head extends Fn {
+
+        @Override public Value call(Value v) {
+            return v.ignore() ? v : new TerminateWithValue(v);
+        }
+
+        @Override protected Fn newInstance() { return new Head(); }
+    }
+
     // todo proučiti mogućnost generifikacije Value
 
     private static class Value {
@@ -331,6 +340,30 @@ public class StreamingResultSet {
      * @return new {@code StreamingResultSet} instance
      */
     public StreamingResultSet dropWhile(Closure<Boolean> p) { return next(new DropWhile(p)); }
+
+    /**
+     * Select the first element of the stream.
+     *
+     * @return the first element of this stream
+     */
+    public Object head() throws SQLException {
+        if (values != null)
+            return values.get(0);
+
+        StreamingResultSet srs = new StreamingResultSet(rs, compute.copy().andThen(new Head())); //next(new Head());
+        return srs.toList().get(0);
+    }
+
+    /**
+     * Selects all elements except the head of the stream.
+     * <p>
+     * This is an alias for {@code drop(1)}
+     * </p>
+     *
+     * @return new {@code StreamingResultSet} instance with all the elements of
+     *         this stream except the first one
+     */
+    public StreamingResultSet tail() { return drop(1); }
 
     private StreamingResultSet next(Fn that) {
         return new StreamingResultSet(rs, compute.andThen(that));
