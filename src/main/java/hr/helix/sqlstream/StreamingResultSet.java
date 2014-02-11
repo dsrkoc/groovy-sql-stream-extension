@@ -383,6 +383,12 @@ public class StreamingResultSet {
 
         values = new ArrayList<Object>();
         GroovyResultSet groovyRS = new GroovyResultSetProxy(rs).getImpl();
+
+        // if several instances of this stream are forced then each should start at the beginning
+        // CAUTION: beforeFirst() throws SQLException if ResultSet type is TYPE_FORWARD_ONLY!
+        if (!groovyRS.isBeforeFirst())
+            groovyRS.beforeFirst();
+
         while (groovyRS.next()) {
             Value v = compute.call(new Value(groovyRS));
 
