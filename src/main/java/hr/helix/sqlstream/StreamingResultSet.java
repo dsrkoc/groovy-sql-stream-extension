@@ -39,7 +39,7 @@ public class StreamingResultSet {
     private Fn compute;
     private List<Object> values;
 
-    private static class Fn {
+    private static class Fn implements Cloneable {
         private Fn next;
 
         public Value call(Value v) { return apply(v); } // override this
@@ -55,15 +55,19 @@ public class StreamingResultSet {
         }
 
         /** makes deep copy of this Fn object */
-        public Fn copy() {
-            Fn copied = newInstance();
-            if (next != null) {
-                copied.next = next.copy();
+        @Override
+        protected final Fn clone() {
+            Fn cloned;
+            try {
+                cloned = (Fn) super.clone();
+            } catch (CloneNotSupportedException e) {
+                return null;
             }
-            return copied;
+            if (next != null) {
+                cloned.next = next.clone();
+            }
+            return cloned;
         }
-
-        protected Fn newInstance() { return new Fn(); }
     }
 
     private static class Collect<T> extends Fn {
@@ -74,8 +78,6 @@ public class StreamingResultSet {
         @Override public Value call(Value v) {
             return apply(new Value(f.call(v.getValue())));
         }
-
-        @Override protected Fn newInstance() { return new Collect<T>(f); }
     }
 
     private static class CollectMany<T extends Collection> extends Fn {
@@ -95,8 +97,6 @@ public class StreamingResultSet {
 
             return new FlatValue(vals);
         }
-
-        @Override protected Fn newInstance() { return new CollectMany<T>(f); }
     }
 
     private static class FindAll extends Fn {
@@ -107,8 +107,6 @@ public class StreamingResultSet {
         @Override public Value call(Value v) {
             return p.call(v.getValue()) ? apply(v) : IgnoreValue.INSTANCE;
         }
-
-        @Override protected Fn newInstance() { return new FindAll(p); }
     }
 
     private static class Each extends Fn {
@@ -120,8 +118,6 @@ public class StreamingResultSet {
             f.call(v.getValue());
             return apply(v);
         }
-
-        @Override protected Fn newInstance() { return new Each(f); }
     }
 
     private static class Take extends Fn {
@@ -137,8 +133,6 @@ public class StreamingResultSet {
                 return apply(v);
             }
         }
-
-        @Override protected Fn newInstance() { return new Take(n); }
     }
 
     private static class TakeWhile extends Fn {
@@ -153,12 +147,6 @@ public class StreamingResultSet {
             } else {
                 return apply(v);
             }
-        }
-
-        @Override protected Fn newInstance() {
-            TakeWhile copied =  new TakeWhile(p);
-            copied.done = done;
-            return copied;
         }
     }
 
@@ -175,8 +163,6 @@ public class StreamingResultSet {
                 return IgnoreValue.INSTANCE;
             }
         }
-
-        @Override protected Fn newInstance() { return new Drop(n); }
     }
 
     private static class DropWhile extends Fn {
@@ -192,12 +178,6 @@ public class StreamingResultSet {
                 return IgnoreValue.INSTANCE;
             }
         }
-
-        @Override protected Fn newInstance() {
-            DropWhile copied = new DropWhile(p);
-            copied.done = done;
-            return copied;
-        }
     }
 
     private static class Head extends Fn {
@@ -206,7 +186,6 @@ public class StreamingResultSet {
             return v.ignore() ? v : new TerminateWithValue(v);
         }
 
-        @Override protected Fn newInstance() { return new Head(); }
     }
 
     // todo proučiti mogućnost generifikacije Value
@@ -350,7 +329,7 @@ public class StreamingResultSet {
         if (values != null)
             return values.get(0);
 
-        StreamingResultSet srs = new StreamingResultSet(rs, compute.copy().andThen(new Head())); //next(new Head());
+        StreamingResultSet srs = new StreamingResultSet(rs, compute.clone().andThen(new Head())); //next(new Head());
         return srs.toList().get(0);
     }
 
