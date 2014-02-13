@@ -321,7 +321,28 @@ public class StreamingResultSet {
     public StreamingResultSet dropWhile(Closure<Boolean> p) { return next(new DropWhile(p)); }
 
     /**
-     * Select the first element of the stream.
+     * Selects the first element of the stream.
+     * <p>
+     * <em>Note</em>: in order to read the first element {@code head()} has to start
+     * processing the result set. {@code StreamingResultSet} can be used again, but,
+     * currently, it will process the result set from the beginning. This means it will
+     * have to return the cursor ({@code ResultSet#beforeFirst()}) before processing.
+     * This will throw {@code SQLException} if the result set type is {@code TYPE_FORWARD_ONLY}.
+     * </p>
+     * <strong>Example</strong>
+     * <pre>
+     * // be careful about result set type if stream is forced more than once
+     * sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE 
+     *
+     * def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+     *     // calls ResultSet#next() to read the first element
+     *     def h  = stream.head()
+     *
+     *     // calls ResultSet#beforeFirst() to start processing from the beginning
+     *     def xs = stream.collect { it.col_a }.toList()
+     *     h + xs.sum()
+     * }
+     * </pre>
      *
      * @return the first element of this stream
      */

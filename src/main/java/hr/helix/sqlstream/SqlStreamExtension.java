@@ -33,8 +33,8 @@ import java.util.Map;
  * respectively.
  * <p>
  * {@code withStream()} methods allow for efficient transformation of queried result set because
- * it accumulates the operations on the result set and evaluates them lazily. The elements of the
- * result set are iterated only once.
+ * the operations on the result set are accumulated and evaluated in succession per one element.
+ * The elements of the result set are iterated only once.
  * </p>
  *
  * <h4>Example</h4>
