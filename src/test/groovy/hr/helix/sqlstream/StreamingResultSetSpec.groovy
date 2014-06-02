@@ -139,6 +139,16 @@ class StreamingResultSetSpec extends Specification {
         lst == expected
     }
 
+    def 'test unique'() {
+        given:
+        def fn = calc.andThen(new SRR.Unique())
+        def input    = [1, 1, 2, 3, 3, 1]
+        def expected = [1, 2, 3]
+
+        expect:
+        force(toVals(input), fn) == expected
+    }
+
     def 'test collect.collectMany.take'() {
         given:
         def fn = calc.andThen(new SRR.Collect<Integer>({ it + 1 }))

@@ -20,9 +20,7 @@ import groovy.sql.GroovyResultSet;
 import groovy.sql.GroovyResultSetProxy;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 /**
  * Wraps the {@code java.sql.ResultSet} and exposes some common collection methods
@@ -106,6 +104,23 @@ public class StreamingResultSet {
 
         @Override public Value call(Value v) {
             return p.call(v.getValue()) ? apply(v) : IgnoreValue.INSTANCE;
+        }
+    }
+
+    private static class Unique extends Fn {
+        private Set seenValues;
+
+        public Unique() {
+            seenValues = new HashSet();
+        }
+
+        @Override public Value call(Value v) {
+            if(seenValues.contains(v.getValue())) {
+                return IgnoreValue.INSTANCE;
+            } else {
+                seenValues.add(v.getValue());
+                return apply(v);
+            }
         }
     }
 
@@ -319,6 +334,15 @@ public class StreamingResultSet {
      * @return new {@code StreamingResultSet} instance
      */
     public StreamingResultSet dropWhile(Closure<Boolean> p) { return next(new DropWhile(p)); }
+
+    /**
+     * Remove all duplicated items, using the default comparator.
+     * Equals and hashCode need to be implemented.
+     * Warning! This keeps all seen values, so it may take up a lot of memory.
+     *
+     * @return new {@code StreamingResultSet} instance
+     */
+    public StreamingResultSet unique() { return next(new Unique()); }
 
     /**
      * Selects the first element of the stream.
