@@ -22,9 +22,7 @@ import org.codehaus.groovy.runtime.*;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 /**
  * Wraps the {@code java.sql.ResultSet} and exposes some common collection methods
@@ -117,7 +115,7 @@ public class StreamingResultSet {
         public Any(Closure<Boolean> p) { this.p = p; }
 
         @Override public Value call(Value v) {
-            return p.call(v.getValue()) ? new TerminateWithValue(new Value(true)): IgnoreValue.INSTANCE;
+            return p.call(v.getValue()) ? TerminateWithValue.TRUE: IgnoreValue.INSTANCE;
         }
     }
 
@@ -127,7 +125,23 @@ public class StreamingResultSet {
         public Every(Closure<Boolean> p) { this.p = p; }
 
         @Override public Value call(Value v) {
-            return p.call(v.getValue()) ? IgnoreValue.INSTANCE: new TerminateWithValue(new Value(false));
+            return p.call(v.getValue()) ? IgnoreValue.INSTANCE: TerminateWithValue.FALSE;
+        }
+    }
+
+    private static class ContainsAll extends Fn {
+        private Collection<?> items;
+
+        public ContainsAll(Collection<?> items) {
+            this.items = new ArrayList(items);
+        }
+
+        @Override
+        public Value call(Value v) {
+            if (items.contains(v.getValue())) {
+                items.remove(v.getValue()); // Every stream item found in the item collection is removed
+            }
+            return items.isEmpty() ? TerminateWithValue.TRUE : IgnoreValue.INSTANCE;
         }
     }
 
@@ -250,6 +264,9 @@ public class StreamingResultSet {
 
     private static class TerminateWithValue extends Value {
         private final Value v;
+
+        public static final TerminateWithValue TRUE = new TerminateWithValue(new Value(Boolean.TRUE));
+        public static final TerminateWithValue FALSE = new TerminateWithValue(new Value(Boolean.FALSE));
 
         public TerminateWithValue(Value v) { this.v = v; }
 
@@ -381,7 +398,7 @@ public class StreamingResultSet {
      * <strong>Example</strong>
      * <pre>
      * def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
-     *     def atLeastOneEvenElement = any {
+     *     boolean atLeastOneEvenElement = stream.any {
      *         it.col_a % 2 == 0
      *     }
      * }
@@ -395,8 +412,7 @@ public class StreamingResultSet {
             return DefaultGroovyMethods.any(values, p);
 
         StreamingResultSet srs = new StreamingResultSet(rs, compute.clone().andThen(new Any(p)));
-        List results = srs.toList();
-        return results.size() > 0 ? (Boolean) results.get(0) : false;
+        return getTerminatedBooleanValueFromStream(srs, Boolean.FALSE);
     }
 
     /**
@@ -405,7 +421,7 @@ public class StreamingResultSet {
      * <strong>Example</strong>
      * <pre>
      * def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
-     *     def areAllElementsEven = every {
+     *     boolean areAllElementsEven = stream.every {
      *         it.col_a % 2 == 0
      *     }
      * }
@@ -419,8 +435,52 @@ public class StreamingResultSet {
             return DefaultGroovyMethods.every(values, p);
 
         StreamingResultSet srs = new StreamingResultSet(rs, compute.clone().andThen(new Every(p)));
+        return getTerminatedBooleanValueFromStream(srs, Boolean.TRUE);
+    }
+
+    /**
+     * Check if the stream contains all the elements.
+     * <strong>Example</strong>
+     * <pre>
+     * def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+     *     boolean areAllElementsEven = stream.collect {
+     *         it.col_a
+     *     }.containsAll([1,2,10])
+     * }
+     * </pre>
+     * @param items the elements that the stream should contains to return false.
+     * @return true if the stream contains all the elements.
+     * @throws SQLException
+     */
+    public boolean containsAll(Object[] items) throws SQLException {
+        return containsAll(Arrays.asList(items));
+    }
+
+    /**
+     * Check if the stream contains all the elements.
+     * @param items the elements that the stream should contains to return false.
+     * @return true if the stream contains all the elements.
+     * @throws SQLException
+     */
+    public boolean containsAll(Collection<?> items) throws SQLException {
+        if (values != null)
+            values.containsAll(items);
+
+        StreamingResultSet srs = new StreamingResultSet(rs, compute.clone().andThen(new ContainsAll(items)));
+        return getTerminatedBooleanValueFromStream(srs, Boolean.FALSE);
+    }
+
+    /**
+     * The boolean functions should end with an empty stream or with a single element stream with a boolean value.
+     * This method gets this boolean value from the stream or return the default value if the stream is empty.
+     * @param srs
+     * @param defaultIfEmpty
+     * @return
+     * @throws SQLException
+     */
+    private Boolean getTerminatedBooleanValueFromStream(StreamingResultSet srs, Boolean defaultIfEmpty) throws SQLException {
         List results = srs.toList();
-        return results.size() > 0 ? (Boolean) results.get(0) : true;
+        return results.size() > 0 ? (Boolean) results.get(0) : defaultIfEmpty;
     }
 
     /**

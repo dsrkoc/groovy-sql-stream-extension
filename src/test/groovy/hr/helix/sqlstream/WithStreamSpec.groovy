@@ -26,7 +26,7 @@ import java.sql.*
  */
 class WithStreamSpec extends Specification {
 
-    private static n = 1000002
+    private static n = 99
 //    private static n = 42
 
     Sql sql
@@ -188,5 +188,72 @@ class WithStreamSpec extends Specification {
 
         then:
         result == true
+    }
+
+    def 'test every with and empty stream must return true()'() {
+        // That's because the Groovy GDK every() method returns true if the collections is empty (predicated is never evaluated)
+        when:
+        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.findAll {
+                false        // gets an empty strem
+            }.every {
+                false        // it doens'nt matter
+            }
+        }
+
+        then:
+        result == true
+    }
+
+    def 'test contains all()'(items, expected) {
+        when:
+        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
+        def result = sql.withStream('SELECT * FROM a_table limit 5') { StreamingResultSet stream ->
+            stream.collect {
+                it.COL_A                   //  [1, 4, 7, 10, 13]
+            }.containsAll(items)
+        }
+
+        then:
+        result == expected
+
+        where:
+        items         | expected
+        [4,7,10]      | true
+        [4,7,10,99]   | false
+        []            | true
+    }
+
+    def 'test contains all doesnt modify the items collection()'(items) {
+        // The containsAll method remove every item contained in the stream, so the items collection shouldn't be modified
+        when:
+        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
+        sql.withStream('SELECT * FROM a_table limit 5') { StreamingResultSet stream ->
+            stream.collect {
+                it.COL_A                   //  [1, 4, 7, 10, 13]
+            }.containsAll(items)
+        }
+
+        then:
+        items.size() == old(items.size())
+
+        where:
+        items = [1, 4, 7]
+
+    }
+
+    def 'test contains all with an empty stream must return false()'() {
+        when:
+        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
+        def result = sql.withStream('SELECT * FROM a_table limit 5') { StreamingResultSet stream ->
+            stream.findAll {
+                false
+            }.containsAll([9999,0])
+        }
+
+        then:
+        result == false
+
     }
 }

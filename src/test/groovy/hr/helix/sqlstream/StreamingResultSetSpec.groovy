@@ -229,6 +229,7 @@ class StreamingResultSetSpec extends Specification {
 
         where:
         input     | expected
+        []        | []
         [5, 2, 7] | [true]
         [5, 2]    | [true]
         [2, 5]    | [true]
@@ -236,7 +237,6 @@ class StreamingResultSetSpec extends Specification {
     }
 
     @Unroll
-    @IgnoreRest
     def 'test every'(input, expected) {
         given:
         def fn = calc.andThen(new SRR.Every({ it % 2 == 0 }))
@@ -246,6 +246,7 @@ class StreamingResultSetSpec extends Specification {
 
         where:
         input      | expected
+        []         | []          // it return empty (means false) but the every(), but the method returs true
         [2, 2, 2]  | []
         [2, 2, 1]  | [false]
         [2, 1, 2]  | [false]
@@ -259,6 +260,25 @@ class StreamingResultSetSpec extends Specification {
         [1]        | [false]
         [1, 1]     | [false]
         [1, 1, 1]  | [false]
+    }
+
+    def 'containsAll'(input, contains, expected) {
+        given:
+        def fn = calc.andThen(new SRR.ContainsAll(contains))
+
+        expect:
+        force(toVals(input), fn) == expected
+
+        where:
+        input      | contains | expected
+        [1, 2, 3]  | []       | [true]
+        [1, 2, 3]  | [2]      | [true]
+        [1, 2, 3]  | [1,2]    | [true]
+        [1, 2, 3]  | [1,2,3]  | [true]
+        [1, 2, 3]  | [1,2,3,4]| []
+        [1, 2, 3]  | [1,2,4]  | []
+        [1, 2, 3]  | [4]      | []
+        [1, 2, 3]  | []       | [true]
     }
 
     private static List<SRR.Value> toVals(List xs) { xs.collect { new SRR.Value(it) }}
