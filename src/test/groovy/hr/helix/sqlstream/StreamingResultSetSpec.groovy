@@ -14,13 +14,10 @@
  * limitations under the License.
  */
 package hr.helix.sqlstream
-
 import hr.helix.sqlstream.StreamingResultSet as SRR
+import spock.lang.*
 
-import spock.lang.Specification
-
-import java.sql.ResultSet
-
+import java.sql.*
 /**
  * 
  * @author dsrkoc
@@ -220,6 +217,48 @@ class StreamingResultSetSpec extends Specification {
 
         expect:
         force(toVals(input), fn) == expected
+    }
+
+    @Unroll
+    def 'test any'(input, expected) {
+        given:
+        def fn = calc.andThen(new SRR.Any({ it % 2 == 0 }))
+
+        expect:
+        force(toVals(input), fn) == expected
+
+        where:
+        input     | expected
+        [5, 2, 7] | [true]
+        [5, 2]    | [true]
+        [2, 5]    | [true]
+        [1, 3]    | []
+    }
+
+    @Unroll
+    @IgnoreRest
+    def 'test every'(input, expected) {
+        given:
+        def fn = calc.andThen(new SRR.Every({ it % 2 == 0 }))
+
+        expect:
+        force(toVals(input), fn) == expected
+
+        where:
+        input      | expected
+        [2, 2, 2]  | []
+        [2, 2, 1]  | [false]
+        [2, 1, 2]  | [false]
+        [1, 2, 2]  | [false]
+        [1, 1, 2]  | [false]
+        [1, 2, 1]  | [false]
+        [2, 1, 1]  | [false]
+        [1, 2]     | [false]
+        [2, 1]     | [false]
+        [2]        | []
+        [1]        | [false]
+        [1, 1]     | [false]
+        [1, 1, 1]  | [false]
     }
 
     private static List<SRR.Value> toVals(List xs) { xs.collect { new SRR.Value(it) }}

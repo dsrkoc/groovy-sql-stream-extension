@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 package hr.helix.sqlstream
+import groovy.sql.*
+import spock.lang.*
 
-import groovy.sql.Sql
-import spock.lang.Specification
-
-import java.sql.ResultSet
-
+import java.sql.*
 /**
  * Compares the performance of withSteam() vs Sql#rows() vs Sql#eachRow()
  *
@@ -134,5 +132,61 @@ class WithStreamSpec extends Specification {
 
         then:
         result == [13, 16, 1, 4, 13]
+    }
+
+    def 'test any even()'() {
+        when:
+        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.any {
+                it.COL_A % 2 == 0 // COL_A has some even numbers: 1, 4, 7, 10, 13, 16, 19, ... (n=n+3 starting 1)
+            }
+        }
+
+        then:
+        result == true
+    }
+
+    def 'test any odd()'() {
+        when:
+        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.findAll {
+                it.COL_A % 2 == 1      // only get the odd numbers: 1, 7, 13, 19, 25, 31
+            }.any {
+                it.COL_A % 2 == 0
+            }
+        }
+
+        then:
+        result == false
+    }
+
+    def 'test every even()'() {
+        when:
+        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.every {
+                it.COL_A % 2 == 0 // COL_A has some even numbers: 1, 4, 7, 10, 13, 16, 19, ... (n=n+3 starting 1)
+            }
+        }
+
+        then:
+        result == false
+    }
+
+    def 'test every odd()'() {
+        when:
+        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.findAll {
+                it.COL_A % 2 == 1      // only get the odd numbers: 1, 7, 13, 19, 25, 31
+            }.every {
+                it.COL_A % 2 == 1
+            }
+        }
+
+        then:
+        result == true
     }
 }

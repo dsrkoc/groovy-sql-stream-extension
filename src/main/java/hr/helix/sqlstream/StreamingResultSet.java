@@ -18,6 +18,8 @@ package hr.helix.sqlstream;
 import groovy.lang.Closure;
 import groovy.sql.GroovyResultSet;
 import groovy.sql.GroovyResultSetProxy;
+import org.codehaus.groovy.runtime.*;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -109,9 +111,29 @@ public class StreamingResultSet {
         }
     }
 
+    private static class Any extends Fn {
+        private Closure<Boolean> p;
+
+        public Any(Closure<Boolean> p) { this.p = p; }
+
+        @Override public Value call(Value v) {
+            return p.call(v.getValue()) ? new TerminateWithValue(new Value(true)): IgnoreValue.INSTANCE;
+        }
+    }
+
+    private static class Every extends Fn {
+        private Closure<Boolean> p;
+
+        public Every(Closure<Boolean> p) { this.p = p; }
+
+        @Override public Value call(Value v) {
+            return p.call(v.getValue()) ? IgnoreValue.INSTANCE: new TerminateWithValue(new Value(false));
+        }
+    }
+
     private static class Each extends Fn {
         private Closure<Object> f;
-        
+
         public Each(Closure<Object> f) { this.f = f; }
 
         @Override public Value call(Value v) {
@@ -332,7 +354,7 @@ public class StreamingResultSet {
      * <strong>Example</strong>
      * <pre>
      * // be careful about result set type if stream is forced more than once
-     * sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE 
+     * sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE
      *
      * def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
      *     // calls ResultSet#next() to read the first element
@@ -352,6 +374,53 @@ public class StreamingResultSet {
 
         StreamingResultSet srs = new StreamingResultSet(rs, compute.clone().andThen(new Head())); //next(new Head());
         return srs.toList().get(0);
+    }
+
+    /**
+     * Iterates over the stream and checks whether the predicate is valid for at least one element.
+     * <strong>Example</strong>
+     * <pre>
+     * def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+     *     def atLeastOneEvenElement = any {
+     *         it.col_a % 2 == 0
+     *     }
+     * }
+     * </pre>
+     *
+     * @param p    the Closure that if it's evaluated to {@code true}, the stream iteration will stop and return true.
+     * @return true if the closure is valid for at least one element or false if the Closure returns false for all the elements in the stream.
+     */
+    public boolean any(Closure p) throws SQLException {
+        if (values != null)
+            return DefaultGroovyMethods.any(values, p);
+
+        StreamingResultSet srs = new StreamingResultSet(rs, compute.clone().andThen(new Any(p)));
+        List results = srs.toList();
+        return results.size() > 0 ? (Boolean) results.get(0) : false;
+    }
+
+    /**
+     * Iterates over the stream and check if the predicated is valid for all the elements.
+     * <code>true</code> for all items in this data structure).
+     * <strong>Example</strong>
+     * <pre>
+     * def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+     *     def areAllElementsEven = every {
+     *         it.col_a % 2 == 0
+     *     }
+     * }
+     * </pre>
+     *
+     * @param p the Closure that should be evaluated to {@code true} for all the elements.
+     * @return true if the closure is valid for all the elements or false if the Closure returns false for only one element.
+     */
+    public boolean every(Closure p) throws SQLException {
+        if (values != null)
+            return DefaultGroovyMethods.every(values, p);
+
+        StreamingResultSet srs = new StreamingResultSet(rs, compute.clone().andThen(new Every(p)));
+        List results = srs.toList();
+        return results.size() > 0 ? (Boolean) results.get(0) : true;
     }
 
     /**
