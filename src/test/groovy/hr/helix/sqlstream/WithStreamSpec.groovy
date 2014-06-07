@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 package hr.helix.sqlstream
-import groovy.sql.*
-import spock.lang.*
 
-import java.sql.*
+import groovy.sql.Sql
+import spock.lang.Specification
+
+import java.sql.ResultSet
+
 /**
  * Compares the performance of withSteam() vs Sql#rows() vs Sql#eachRow()
  *
@@ -26,7 +28,7 @@ import java.sql.*
  */
 class WithStreamSpec extends Specification {
 
-    private static n = 99
+    private static n = 1000002
 //    private static n = 42
 
     Sql sql
@@ -136,10 +138,9 @@ class WithStreamSpec extends Specification {
 
     def 'test any even()'() {
         when:
-        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
         def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
             stream.any {
-                it.COL_A % 2 == 0 // COL_A has some even numbers: 1, 4, 7, 10, 13, 16, 19, ... (n=n+3 starting 1)
+                it.col_a % 2 == 0 // col_a has some even numbers: 1, 4, 7, 10, 13, 16, 19, ... (n=n+3 starting 1)
             }
         }
 
@@ -149,12 +150,11 @@ class WithStreamSpec extends Specification {
 
     def 'test any odd()'() {
         when:
-        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
         def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
             stream.findAll {
-                it.COL_A % 2 == 1      // only get the odd numbers: 1, 7, 13, 19, 25, 31
+                it.col_a % 2 == 1      // only get the odd numbers: 1, 7, 13, 19, 25, 31
             }.any {
-                it.COL_A % 2 == 0
+                it.col_a % 2 == 0
             }
         }
 
@@ -164,10 +164,9 @@ class WithStreamSpec extends Specification {
 
     def 'test every even()'() {
         when:
-        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
         def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
             stream.every {
-                it.COL_A % 2 == 0 // COL_A has some even numbers: 1, 4, 7, 10, 13, 16, 19, ... (n=n+3 starting 1)
+                it.col_a % 2 == 0 // col_a has some even numbers: 1, 4, 7, 10, 13, 16, 19, ... (n=n+3 starting 1)
             }
         }
 
@@ -177,12 +176,11 @@ class WithStreamSpec extends Specification {
 
     def 'test every odd()'() {
         when:
-        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
         def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
             stream.findAll {
-                it.COL_A % 2 == 1      // only get the odd numbers: 1, 7, 13, 19, 25, 31
+                it.col_a % 2 == 1      // only get the odd numbers: 1, 7, 13, 19, 25, 31
             }.every {
-                it.COL_A % 2 == 1
+                it.col_a % 2 == 1
             }
         }
 
@@ -193,7 +191,6 @@ class WithStreamSpec extends Specification {
     def 'test every with and empty stream must return true()'() {
         // That's because the Groovy GDK every() method returns true if the collections is empty (predicated is never evaluated)
         when:
-        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
         def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
             stream.findAll {
                 false        // gets an empty strem
@@ -206,12 +203,11 @@ class WithStreamSpec extends Specification {
         result == true
     }
 
-    def 'test contains all()'(items, expected) {
+    def 'test contains all()'(List<Integer> items, boolean expected) {
         when:
-        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
         def result = sql.withStream('SELECT * FROM a_table limit 5') { StreamingResultSet stream ->
             stream.collect {
-                it.COL_A                   //  [1, 4, 7, 10, 13]
+                it.col_a                   //  [1, 4, 7, 10, 13]
             }.containsAll(items)
         }
 
@@ -225,13 +221,12 @@ class WithStreamSpec extends Specification {
         []            | true
     }
 
-    def 'test contains all doesnt modify the items collection()'(items) {
+    def "test contains all doesn't modify the items collection()"(items) {
         // The containsAll method remove every item contained in the stream, so the items collection shouldn't be modified
         when:
-        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
         sql.withStream('SELECT * FROM a_table limit 5') { StreamingResultSet stream ->
             stream.collect {
-                it.COL_A                   //  [1, 4, 7, 10, 13]
+                it.col_a                   //  [1, 4, 7, 10, 13]
             }.containsAll(items)
         }
 
@@ -245,7 +240,6 @@ class WithStreamSpec extends Specification {
 
     def 'test contains all with an empty stream must return false()'() {
         when:
-        sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE // if we want to play with forcing the stream more than once
         def result = sql.withStream('SELECT * FROM a_table limit 5') { StreamingResultSet stream ->
             stream.findAll {
                 false

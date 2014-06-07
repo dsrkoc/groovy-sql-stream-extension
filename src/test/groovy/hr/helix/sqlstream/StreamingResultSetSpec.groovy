@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 package hr.helix.sqlstream
-import hr.helix.sqlstream.StreamingResultSet as SRR
-import spock.lang.*
 
-import java.sql.*
+import hr.helix.sqlstream.StreamingResultSet as SRR
+import spock.lang.Specification
+import spock.lang.Unroll
+
+import java.sql.ResultSet
+
 /**
  * 
  * @author dsrkoc
@@ -220,7 +223,7 @@ class StreamingResultSetSpec extends Specification {
     }
 
     @Unroll
-    def 'test any'(input, expected) {
+    def 'test any'(List<Integer> input, List<Boolean> expected) {
         given:
         def fn = calc.andThen(new SRR.Any({ it % 2 == 0 }))
 
@@ -237,7 +240,7 @@ class StreamingResultSetSpec extends Specification {
     }
 
     @Unroll
-    def 'test every'(input, expected) {
+    def 'test every'(List<Integer> input, List<Boolean> expected) {
         given:
         def fn = calc.andThen(new SRR.Every({ it % 2 == 0 }))
 
@@ -262,7 +265,7 @@ class StreamingResultSetSpec extends Specification {
         [1, 1, 1]  | [false]
     }
 
-    def 'containsAll'(input, contains, expected) {
+    def 'containsAll'(List<Integer> input, List<Integer> contains, List<Boolean> expected) {
         given:
         def fn = calc.andThen(new SRR.ContainsAll(contains))
 
