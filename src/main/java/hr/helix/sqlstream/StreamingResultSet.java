@@ -18,9 +18,12 @@ package hr.helix.sqlstream;
 import groovy.lang.Closure;
 import groovy.sql.GroovyResultSet;
 import groovy.sql.GroovyResultSetProxy;
+import org.codehaus.groovy.runtime.DefaultGroovyMethods;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -109,9 +112,45 @@ public class StreamingResultSet {
         }
     }
 
+    private static class Any extends Fn {
+        private Closure<Boolean> p;
+
+        public Any(Closure<Boolean> p) { this.p = p; }
+
+        @Override public Value call(Value v) {
+            return p.call(v.getValue()) ? TerminateWithValue.TRUE : IgnoreValue.INSTANCE;
+        }
+    }
+
+    private static class Every extends Fn {
+        private Closure<Boolean> p;
+
+        public Every(Closure<Boolean> p) { this.p = p; }
+
+        @Override public Value call(Value v) {
+            return p.call(v.getValue()) ? IgnoreValue.INSTANCE : TerminateWithValue.FALSE;
+        }
+    }
+
+    private static class ContainsAll extends Fn {
+        private Collection<?> items;
+
+        public ContainsAll(Collection<?> items) {
+            this.items = new ArrayList(items);
+        }
+
+        @Override
+        public Value call(Value v) {
+            if (items.contains(v.getValue())) {
+                items.remove(v.getValue()); // Every stream item found in the item collection is removed
+            }
+            return items.isEmpty() ? TerminateWithValue.TRUE : IgnoreValue.INSTANCE;
+        }
+    }
+
     private static class Each extends Fn {
         private Closure<Object> f;
-        
+
         public Each(Closure<Object> f) { this.f = f; }
 
         @Override public Value call(Value v) {
@@ -229,6 +268,9 @@ public class StreamingResultSet {
     private static class TerminateWithValue extends Value {
         private final Value v;
 
+        public static final TerminateWithValue TRUE = new TerminateWithValue(new Value(Boolean.TRUE));
+        public static final TerminateWithValue FALSE = new TerminateWithValue(new Value(Boolean.FALSE));
+
         public TerminateWithValue(Value v) { this.v = v; }
 
         @Override public boolean terminate() { return true; }
@@ -332,7 +374,7 @@ public class StreamingResultSet {
      * <strong>Example</strong>
      * <pre>
      * // be careful about result set type if stream is forced more than once
-     * sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE 
+     * sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE
      *
      * def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
      *     // calls ResultSet#next() to read the first element
@@ -355,6 +397,89 @@ public class StreamingResultSet {
     }
 
     /**
+     * Iterates over the stream and checks whether the predicate is valid for at least one element.
+     *
+     * <p><strong>Example</strong></p>
+     * <pre>
+     * def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+     *     boolean atLeastOneEvenElement = stream.any {
+     *         it.col_a % 2 == 0
+     *     }
+     * }
+     * </pre>
+     *
+     * @param p    the Closure predicate that must evaluate to {@code true} at least once
+     *             for this method to return {@code true}
+     * @return true if any item in the stream matches the Closure predicate
+     * @throws SQLException if database access error occurs
+     */
+    public boolean any(Closure<Boolean> p) throws SQLException {
+        if (values != null)
+            return DefaultGroovyMethods.any(values, p);
+
+        return terminateBool(new Any(p), Boolean.FALSE);
+    }
+
+    /**
+     * Iterates over the stream and check if the predicate is valid for all the elements
+     * (i.e. returns {@code true} for all items in this data structure).
+     *
+     * <p><strong>Example</strong></p>
+     * <pre>
+     * def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+     *     boolean areAllElementsEven = stream.every {
+     *         it.col_a % 2 == 0
+     *     }
+     * }
+     * </pre>
+     *
+     * @param p    the Closure predicate that must evaluate to {@code true} for each stream element
+     *             for this method to return {@code true}
+     * @return true if all items in the stream match the Closure predicate
+     * @throws SQLException if database access error occurs
+     */
+    public boolean every(Closure<Boolean> p) throws SQLException {
+        if (values != null)
+            return DefaultGroovyMethods.every(values, p);
+
+        return terminateBool(new Every(p), Boolean.TRUE);
+    }
+
+    /**
+     * Check if the stream contains all the elements in the specified array.
+     *
+     * <p><strong>Example</strong></p>
+     * <pre>
+     * def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+     *     boolean areAllElementsEven = stream.collect {
+     *         it.col_a
+     *     }.containsAll([1,2,10])
+     * }
+     * </pre>
+     *
+     * @param items    array to be checked for containment in this stream.
+     * @return true if the stream contains all the elements.
+     * @throws SQLException if database access error occurs
+     */
+    public boolean containsAll(Object[] items) throws SQLException {
+        return containsAll(Arrays.asList(items));
+    }
+
+    /**
+     * Check if the stream contains all the elements in the specified collection.
+     *
+     * @param items    collection to be checked for containment in this stream.
+     * @return true if the stream contains all the elements.
+     * @throws SQLException if database access error occurs
+     */
+    public boolean containsAll(Collection<?> items) throws SQLException {
+        if (values != null)
+            values.containsAll(items);
+
+        return terminateBool(new ContainsAll(items), Boolean.FALSE);
+    }
+
+    /**
      * Selects all elements except the head of the stream.
      * <p>
      * This is an alias for {@code drop(1)}
@@ -367,6 +492,36 @@ public class StreamingResultSet {
 
     private StreamingResultSet next(Fn that) {
         return new StreamingResultSet(rs, compute.andThen(that));
+    }
+
+    /**
+     * Terminating functions should end with an empty stream or with a single element stream.
+     * This method returns either the value from the stream or the default value if the stream is empty.
+     *
+     * @param that              terminating function that is invoked at the end of {@code compute} chain
+     * @param defaultIfEmpty    default value to be returned if realized stream is empty
+     * @return the first element of the realized stream or {@code defaultIfEmpty} if the stream is empty
+     * @throws SQLException if database access error occurs
+     */
+    private Object terminate(Fn that, Object defaultIfEmpty) throws SQLException {
+        StreamingResultSet srs = new StreamingResultSet(rs, compute.clone().andThen(that));
+
+        List results = srs.toList();
+        return results.isEmpty() ? defaultIfEmpty : results.get(0);
+    }
+
+    /**
+     * Boolean terminating functions should end with an empty stream or with a single element stream
+     * with a boolean value. This method returns either the boolean value from the stream or the default
+     * value if the stream is empty.
+     *
+     * @param that              terminating function that is invoked at the end of {@code compute} chain
+     * @param defaultIfEmpty    default boolean value to be returned if realized stream is empty
+     * @return the first element of the realized stream or {@code defaultIfEmpty} if the stream is empty
+     * @throws SQLException if database access error occurs
+     */
+    private Boolean terminateBool(Fn that, Boolean defaultIfEmpty) throws SQLException {
+        return (Boolean) terminate(that, defaultIfEmpty);
     }
 
     /**

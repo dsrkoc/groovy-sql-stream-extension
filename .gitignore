@@ -3,3 +3,4 @@
 /build
 /src/main/resources
 *.swp
+.idea
