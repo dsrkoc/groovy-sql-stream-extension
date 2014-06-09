@@ -35,6 +35,7 @@ import java.util.List;
  * fields using property style notation and ordinal index values.
  *
  * @author Dinko Srkoč
+ * @author Alberto Vilches
  * @author Adam Sernheim
  * @since 2013-10-30
  */
@@ -114,8 +115,6 @@ public class StreamingResultSet {
     }
 
     private static class Find extends FindAll {
-        private Closure<Boolean> p;
-
         public Find(Closure<Boolean> p) {
             super(p);
             andThen(new Head());
@@ -341,9 +340,7 @@ public class StreamingResultSet {
         if (values != null)
             return DefaultGroovyMethods.find(values, p);
 
-        StreamingResultSet srs = new StreamingResultSet(rs, compute.clone().andThen(new Find(p)));
-        List<Object> results = srs.toList();
-        return results.isEmpty() ? null : results.get(0);
+        return terminate(new Find(p), null);
     }
 
     /**
