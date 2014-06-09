@@ -124,4 +124,4 @@ uploadArchives {
 //     classpath = sourceSets.main.runtimeClasspath
 // }
 
-wrapper { gradleVersion = '1.10' }
+wrapper { gradleVersion = '1.12' }
