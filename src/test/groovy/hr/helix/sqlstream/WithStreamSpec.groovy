@@ -136,6 +136,26 @@ class WithStreamSpec extends Specification {
         result == [13, 16, 1, 4, 13]
     }
 
+    def 'test find'() {
+        when:
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.collect { it.col_a }.find { it == 1 }
+        }
+
+        then:
+        result == 1
+    }
+
+    def 'test find - returning null if not found'() {
+        when:
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.collect { it.col_a }.find { it == -1 }
+        }
+
+        then:
+        result == null
+    }
+
     def 'test any even()'() {
         when:
         def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->

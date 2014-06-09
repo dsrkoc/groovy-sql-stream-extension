@@ -16,6 +16,7 @@
 package hr.helix.sqlstream
 
 import hr.helix.sqlstream.StreamingResultSet as SRR
+
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -217,6 +218,39 @@ class StreamingResultSetSpec extends Specification {
                      .andThen(new SRR.Head())
         def input = 1..10
         def expected = ['4']
+
+        expect:
+        force(toVals(input), fn) == expected
+    }
+
+    def 'test find'() {
+        given:
+        def fn = calc.andThen(new SRR.Find({it == 2}))
+        def input = 1..10
+        def expected = [2]
+
+        expect:
+        force(toVals(input), fn) == expected
+    }
+
+    def 'test collect.drop.find'() {
+        given:
+        def fn = calc.andThen(new SRR.Collect<String>({ it.toString() }))
+                     .andThen(new SRR.Drop(3))
+                     .andThen(new SRR.Find({it == '6'}))
+        def input = 1..10
+        def expected = ['6']
+
+        expect:
+        force(toVals(input), fn) == expected
+    }
+
+    def 'test collect.find - returning null if element not found'() {
+        given:
+        def fn = calc.andThen(new SRR.Collect<String>({ it.toString() }))
+                     .andThen(new SRR.Find({it == 'xxx'}))
+        def input = 1..10
+        def expected = [] // todo should be null, probably have to change to `force()`
 
         expect:
         force(toVals(input), fn) == expected

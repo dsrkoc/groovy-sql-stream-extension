@@ -35,6 +35,7 @@ import java.util.List;
  * fields using property style notation and ordinal index values.
  *
  * @author Dinko Srkoč
+ * @author Adam Sernheim
  * @since 2013-10-30
  */
 public class StreamingResultSet {
@@ -112,6 +113,15 @@ public class StreamingResultSet {
         }
     }
 
+    private static class Find extends FindAll {
+        private Closure<Boolean> p;
+
+        public Find(Closure<Boolean> p) {
+            super(p);
+            andThen(new Head());
+        }
+    }
+
     private static class Any extends Fn {
         private Closure<Boolean> p;
 
@@ -136,7 +146,7 @@ public class StreamingResultSet {
         private Collection<?> items;
 
         public ContainsAll(Collection<?> items) {
-            this.items = new ArrayList(items);
+            this.items = new ArrayList<Object>(items);
         }
 
         @Override
@@ -319,6 +329,22 @@ public class StreamingResultSet {
      * @return new {@code StreamingResultSet} instance
      */
     public StreamingResultSet findAll(Closure<Boolean> p) { return next(new FindAll(p)); }
+
+    /**
+     * Finds the first element matching the given Closure predicate.
+     * The result is equivalent to {@code findAll} operation followed by {@code head}.
+     *
+     * @param p   the Closure that must evaluate to {@code true} for element to be taken
+     * @return the first element matching the Closure predicate
+     */
+    public Object find(Closure<Boolean> p) throws SQLException {
+        if (values != null)
+            return DefaultGroovyMethods.find(values, p);
+
+        StreamingResultSet srs = new StreamingResultSet(rs, compute.clone().andThen(new Find(p)));
+        List<Object> results = srs.toList();
+        return results.isEmpty() ? null : results.get(0);
+    }
 
     /**
      * Iterates through the stream passing each element to the given Closure {@code f}.
