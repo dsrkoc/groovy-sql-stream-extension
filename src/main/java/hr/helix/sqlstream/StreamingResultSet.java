@@ -469,7 +469,7 @@ public class StreamingResultSet {
     }
 
     /**
-     * Check if the stream contains all the elements in the specified array.
+     * Checks if the stream contains all the elements in the specified array.
      *
      * <p><strong>Example</strong></p>
      * <pre>
@@ -489,7 +489,7 @@ public class StreamingResultSet {
     }
 
     /**
-     * Check if the stream contains all the elements in the specified collection.
+     * Checks if the stream contains all the elements in the specified collection.
      *
      * @param items    collection to be checked for containment in this stream.
      * @return true if the stream contains all the elements.

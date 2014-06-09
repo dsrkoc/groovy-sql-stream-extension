@@ -160,7 +160,7 @@ class WithStreamSpec extends Specification {
         when:
         def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
             stream.any {
-                it.col_a % 2 == 0 // col_a has some even numbers: 1, 4, 7, 10, 13, 16, 19, ... (n=n+3 starting 1)
+                it.col_a % 2 == 0 // col_a has some even numbers: 1, 4, 7, 10, 13, 16, 19, ... (n=n+3 starting with 1)
             }
         }
 
@@ -186,7 +186,7 @@ class WithStreamSpec extends Specification {
         when:
         def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
             stream.every {
-                it.col_a % 2 == 0 // col_a has some even numbers: 1, 4, 7, 10, 13, 16, 19, ... (n=n+3 starting 1)
+                it.col_a % 2 == 0 // col_a has some even numbers: 1, 4, 7, 10, 13, 16, 19, ... (n=n+3 starting with 1)
             }
         }
 
@@ -209,13 +209,13 @@ class WithStreamSpec extends Specification {
     }
 
     def 'test every with and empty stream must return true()'() {
-        // That's because the Groovy GDK every() method returns true if the collections is empty (predicated is never evaluated)
+        // That's because the Groovy GDK every() method returns true if the collection is empty (predicate is never evaluated)
         when:
         def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
             stream.findAll {
-                false        // gets an empty strem
+                false        // gets an empty stream
             }.every {
-                false        // it doens'nt matter
+                false        // it doesn't matter
             }
         }
 
@@ -242,7 +242,7 @@ class WithStreamSpec extends Specification {
     }
 
     def "test contains all doesn't modify the items collection()"(items) {
-        // The containsAll method remove every item contained in the stream, so the items collection shouldn't be modified
+        // The containsAll method removes every item contained in the stream, so the items collection shouldn't be modified
         when:
         sql.withStream('SELECT * FROM a_table limit 5') { StreamingResultSet stream ->
             stream.collect {
