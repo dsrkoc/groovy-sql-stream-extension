@@ -135,4 +135,139 @@ class WithStreamSpec extends Specification {
         then:
         result == [13, 16, 1, 4, 13]
     }
+
+    def 'test find'() {
+        when:
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.collect { it.col_a }.find { it == 1 }
+        }
+
+        then:
+        result == 1
+    }
+
+    def 'test find - returning null if not found'() {
+        when:
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.collect { it.col_a }.find { it == -1 }
+        }
+
+        then:
+        result == null
+    }
+
+    def 'test any even()'() {
+        when:
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.any {
+                it.col_a % 2 == 0 // col_a has some even numbers: 1, 4, 7, 10, 13, 16, 19, ... (n=n+3 starting with 1)
+            }
+        }
+
+        then:
+        result == true
+    }
+
+    def 'test any odd()'() {
+        when:
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.findAll {
+                it.col_a % 2 == 1      // only get the odd numbers: 1, 7, 13, 19, 25, 31
+            }.any {
+                it.col_a % 2 == 0
+            }
+        }
+
+        then:
+        result == false
+    }
+
+    def 'test every even()'() {
+        when:
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.every {
+                it.col_a % 2 == 0 // col_a has some even numbers: 1, 4, 7, 10, 13, 16, 19, ... (n=n+3 starting with 1)
+            }
+        }
+
+        then:
+        result == false
+    }
+
+    def 'test every odd()'() {
+        when:
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.findAll {
+                it.col_a % 2 == 1      // only get the odd numbers: 1, 7, 13, 19, 25, 31
+            }.every {
+                it.col_a % 2 == 1
+            }
+        }
+
+        then:
+        result == true
+    }
+
+    def 'test every with and empty stream must return true()'() {
+        // That's because the Groovy GDK every() method returns true if the collection is empty (predicate is never evaluated)
+        when:
+        def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
+            stream.findAll {
+                false        // gets an empty stream
+            }.every {
+                false        // it doesn't matter
+            }
+        }
+
+        then:
+        result == true
+    }
+
+    def 'test contains all()'(List<Integer> items, boolean expected) {
+        when:
+        def result = sql.withStream('SELECT * FROM a_table limit 5') { StreamingResultSet stream ->
+            stream.collect {
+                it.col_a                   //  [1, 4, 7, 10, 13]
+            }.containsAll(items)
+        }
+
+        then:
+        result == expected
+
+        where:
+        items         | expected
+        [4,7,10]      | true
+        [4,7,10,99]   | false
+        []            | true
+    }
+
+    def "test contains all doesn't modify the items collection()"(items) {
+        // The containsAll method removes every item contained in the stream, so the items collection shouldn't be modified
+        when:
+        sql.withStream('SELECT * FROM a_table limit 5') { StreamingResultSet stream ->
+            stream.collect {
+                it.col_a                   //  [1, 4, 7, 10, 13]
+            }.containsAll(items)
+        }
+
+        then:
+        items.size() == old(items.size())
+
+        where:
+        items = [1, 4, 7]
+
+    }
+
+    def 'test contains all with an empty stream must return false()'() {
+        when:
+        def result = sql.withStream('SELECT * FROM a_table limit 5') { StreamingResultSet stream ->
+            stream.findAll {
+                false
+            }.containsAll([9999,0])
+        }
+
+        then:
+        result == false
+
+    }
 }

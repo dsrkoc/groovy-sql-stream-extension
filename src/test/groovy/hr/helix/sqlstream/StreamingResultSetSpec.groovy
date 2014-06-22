@@ -18,6 +18,7 @@ package hr.helix.sqlstream
 import hr.helix.sqlstream.StreamingResultSet as SRR
 
 import spock.lang.Specification
+import spock.lang.Unroll
 
 import java.sql.ResultSet
 
@@ -230,6 +231,101 @@ class StreamingResultSetSpec extends Specification {
 
         expect:
         force(toVals(input), fn) == expected
+    }
+
+    def 'test find'() {
+        given:
+        def fn = calc.andThen(new SRR.Find({it == 2}))
+        def input = 1..10
+        def expected = [2]
+
+        expect:
+        force(toVals(input), fn) == expected
+    }
+
+    def 'test collect.drop.find'() {
+        given:
+        def fn = calc.andThen(new SRR.Collect<String>({ it.toString() }))
+                     .andThen(new SRR.Drop(3))
+                     .andThen(new SRR.Find({it == '6'}))
+        def input = 1..10
+        def expected = ['6']
+
+        expect:
+        force(toVals(input), fn) == expected
+    }
+
+    def 'test collect.find - returning null if element not found'() {
+        given:
+        def fn = calc.andThen(new SRR.Collect<String>({ it.toString() }))
+                     .andThen(new SRR.Find({it == 'xxx'}))
+        def input = 1..10
+        def expected = [] // todo should be null, probably have to change to `force()`
+
+        expect:
+        force(toVals(input), fn) == expected
+    }
+
+    @Unroll
+    def 'test any'(List<Integer> input, List<Boolean> expected) {
+        given:
+        def fn = calc.andThen(new SRR.Any({ it % 2 == 0 }))
+
+        expect:
+        force(toVals(input), fn) == expected
+
+        where:
+        input     | expected
+        []        | []
+        [5, 2, 7] | [true]
+        [5, 2]    | [true]
+        [2, 5]    | [true]
+        [1, 3]    | []
+    }
+
+    @Unroll
+    def 'test every'(List<Integer> input, List<Boolean> expected) {
+        given:
+        def fn = calc.andThen(new SRR.Every({ it % 2 == 0 }))
+
+        expect:
+        force(toVals(input), fn) == expected
+
+        where:
+        input      | expected
+        []         | []          // it return empty (means false) but the every(), but the method returs true
+        [2, 2, 2]  | []
+        [2, 2, 1]  | [false]
+        [2, 1, 2]  | [false]
+        [1, 2, 2]  | [false]
+        [1, 1, 2]  | [false]
+        [1, 2, 1]  | [false]
+        [2, 1, 1]  | [false]
+        [1, 2]     | [false]
+        [2, 1]     | [false]
+        [2]        | []
+        [1]        | [false]
+        [1, 1]     | [false]
+        [1, 1, 1]  | [false]
+    }
+
+    def 'containsAll'(List<Integer> input, List<Integer> contains, List<Boolean> expected) {
+        given:
+        def fn = calc.andThen(new SRR.ContainsAll(contains))
+
+        expect:
+        force(toVals(input), fn) == expected
+
+        where:
+        input      | contains | expected
+        [1, 2, 3]  | []       | [true]
+        [1, 2, 3]  | [2]      | [true]
+        [1, 2, 3]  | [1,2]    | [true]
+        [1, 2, 3]  | [1,2,3]  | [true]
+        [1, 2, 3]  | [1,2,3,4]| []
+        [1, 2, 3]  | [1,2,4]  | []
+        [1, 2, 3]  | [4]      | []
+        [1, 2, 3]  | []       | [true]
     }
 
     private static List<SRR.Value> toVals(List xs) { xs.collect { new SRR.Value(it) }}
