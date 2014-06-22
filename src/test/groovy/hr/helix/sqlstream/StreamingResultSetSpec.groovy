@@ -140,11 +140,21 @@ class StreamingResultSetSpec extends Specification {
         lst == expected
     }
 
-    def 'test unique'() {
+    def 'test unique - without closure'() {
         given:
-        def fn = calc.andThen(new SRR.Unique())
+        def fn = calc.andThen(new SRR.Unique(null))
         def input    = [1, 1, 2, 3, 3, 1]
         def expected = [1, 2, 3]
+
+        expect:
+        force(toVals(input), fn) == expected
+    }
+
+    def 'test unique - with a closure'() {
+        given:
+        def fn = calc.andThen(new SRR.Unique({ it % 2 }))
+        def input    = [1, 1, 2, 3, 3, 1]
+        def expected = [1, 2]
 
         expect:
         force(toVals(input), fn) == expected

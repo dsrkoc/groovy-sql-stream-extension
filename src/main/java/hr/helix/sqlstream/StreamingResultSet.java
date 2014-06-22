@@ -22,10 +22,7 @@ import org.codehaus.groovy.runtime.DefaultGroovyMethods;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 /**
  * Wraps the {@code java.sql.ResultSet} and exposes some common collection methods
@@ -158,17 +155,20 @@ public class StreamingResultSet {
     }
 
     private static class Unique extends Fn {
+        private Closure closure;
         private Set seenValues;
 
-        public Unique() {
+        public Unique(Closure closure) {
+            this.closure = closure;
             seenValues = new HashSet();
         }
 
         @Override public Value call(Value v) {
-            if(seenValues.contains(v.getValue())) {
+            Object value = (closure == null) ? v.getValue() : closure.call(v.getValue());
+            if(seenValues.contains(value)) {
                 return IgnoreValue.INSTANCE;
             } else {
-                seenValues.add(v.getValue());
+                seenValues.add(value);
                 return apply(v);
             }
         }
@@ -409,7 +409,14 @@ public class StreamingResultSet {
      *
      * @return new {@code StreamingResultSet} instance
      */
-    public StreamingResultSet unique() { return next(new Unique()); }
+    public StreamingResultSet unique() { return next(new Unique(null)); }
+
+    /**
+     * Like {@see unique}, but uses the result of the closure.
+     * @param closure
+     * @return
+     */
+    public StreamingResultSet unique(Closure closure) { return next(new Unique(closure)); }
 
     /**
      * Selects the first element of the stream.
