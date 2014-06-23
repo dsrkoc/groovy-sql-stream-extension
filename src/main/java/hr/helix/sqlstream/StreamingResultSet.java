@@ -155,17 +155,20 @@ public class StreamingResultSet {
     }
 
     private static class Unique extends Fn {
+        private Closure closure;
         private Set seenValues;
 
-        public Unique() {
+        public Unique(Closure closure) {
+            this.closure = closure;
             seenValues = new HashSet();
         }
 
         @Override public Value call(Value v) {
-            if(seenValues.contains(v.getValue())) {
+            Object value = (closure == null) ? v.getValue() : closure.call(v.getValue());
+            if(seenValues.contains(value)) {
                 return IgnoreValue.INSTANCE;
             } else {
-                seenValues.add(v.getValue());
+                seenValues.add(value);
                 return apply(v);
             }
         }
@@ -427,7 +430,7 @@ public class StreamingResultSet {
      * <strong>Example</strong>
      * <pre>
      * // be careful about result set type if stream is forced more than once
-     * sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE 
+     * sql.resultSetType = ResultSet.TYPE_SCROLL_INSENSITIVE
      *
      * def result = sql.withStream('SELECT * FROM a_table') { StreamingResultSet stream ->
      *     // calls ResultSet#next() to read the first element
