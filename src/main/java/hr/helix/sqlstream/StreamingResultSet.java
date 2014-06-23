@@ -22,10 +22,7 @@ import org.codehaus.groovy.runtime.DefaultGroovyMethods;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 /**
  * Wraps the {@code java.sql.ResultSet} and exposes some common collection methods
@@ -154,6 +151,26 @@ public class StreamingResultSet {
                 items.remove(v.getValue()); // Every stream item found in the item collection is removed
             }
             return items.isEmpty() ? TerminateWithValue.TRUE : IgnoreValue.INSTANCE;
+        }
+    }
+
+    private static class Unique extends Fn {
+        private Closure closure;
+        private Set seenValues;
+
+        public Unique(Closure closure) {
+            this.closure = closure;
+            seenValues = new HashSet();
+        }
+
+        @Override public Value call(Value v) {
+            Object value = (closure == null) ? v.getValue() : closure.call(v.getValue());
+            if(seenValues.contains(value)) {
+                return IgnoreValue.INSTANCE;
+            } else {
+                seenValues.add(value);
+                return apply(v);
+            }
         }
     }
 
@@ -384,6 +401,22 @@ public class StreamingResultSet {
      * @return new {@code StreamingResultSet} instance
      */
     public StreamingResultSet dropWhile(Closure<Boolean> p) { return next(new DropWhile(p)); }
+
+    /**
+     * Remove all duplicated items, using the default comparator.
+     * Equals and hashCode need to be implemented.
+     * Warning! This keeps all seen values, so it may take up a lot of memory.
+     *
+     * @return new {@code StreamingResultSet} instance
+     */
+    public StreamingResultSet unique() { return next(new Unique(null)); }
+
+    /**
+     * Like {@see unique}, but uses the result of the closure.
+     * @param closure
+     * @return
+     */
+    public StreamingResultSet unique(Closure closure) { return next(new Unique(closure)); }
 
     /**
      * Selects the first element of the stream.
