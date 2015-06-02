@@ -14,7 +14,7 @@ For the extension module to be functional, Groovy 2.0 or greater is required.
 
 Usage:
 
-    @Grab('hr.helix:groovy-sql-stream-extension:0.4.3')
+    @Grab('hr.helix:groovy-sql-stream-extension:0.5.0')
 
 Building from source:
 
@@ -88,7 +88,7 @@ then using `rows()` by a wider margin.
 API
 ---
 
-`groovy-sql-stream-extension` library in its `0.4.3` version supports the following functionalities:
+`groovy-sql-stream-extension` library in its `0.5.0` version supports the following functionalities:
 
 ```java
 /*
@@ -120,6 +120,21 @@ StreamingResultSet.take(int)
 StreamingResultSet.takeWhile(Closure<Boolean>)
 StreamingResultSet.drop(int)
 StreamingResultSet.dropWhile(Closure<Boolean>)
+StreamingResultSet.tail()
+
+// terminating methods (those that implicitly realize the stream)
+// those methods, unlike the above, do not return StreamingResultSet
+
+StreamingResultSet.head()
+StreamingResultSet.find(Closure<Boolean>)
+StreamingResultSet.findResult(Closure)
+StreamingResultSet.findResults(Closure)
+StreamingResultSet.any(Closure<Boolean>)
+StreamingResultSet.every(Closure<Boolean>)
+StreamingResultSet.containsAll(Object[])
+StreamingResultSet.containsAll(Collection)
+StreamingResultSet.contains(Object)
+StreamingResultSet.inject(T, Closure<T>)
 
 // forcing the realization of the stream
 
