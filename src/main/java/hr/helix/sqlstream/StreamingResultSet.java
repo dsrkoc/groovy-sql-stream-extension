@@ -114,8 +114,26 @@ public class StreamingResultSet {
         }
     }
 
+    private static class FindResults extends Fn {
+        private Closure<?> p;
+
+        public FindResults(Closure<?> p) { this.p = p; }
+
+        @Override public Value call(Value v) {
+            Object newVal = p.call(v.getValue());
+            return newVal == null ? IgnoreValue.INSTANCE : apply(new Value(newVal));
+        }
+    }
+
     private static class Find extends FindAll {
         public Find(Closure<Boolean> p) {
+            super(p);
+            andThen(new Head());
+        }
+    }
+
+    private static class FindResult extends FindResults {
+        public FindResult(Closure<?> p) {
             super(p);
             andThen(new Head());
         }
@@ -154,6 +172,21 @@ public class StreamingResultSet {
                 items.remove(v.getValue()); // Every stream item found in the item collection is removed
             }
             return items.isEmpty() ? TerminateWithValue.TRUE : IgnoreValue.INSTANCE;
+        }
+    }
+
+    private static class Contains extends Fn {
+        private Object item;
+
+        public Contains(Object item) {
+            this.item = item;
+        }
+
+        @Override
+        public Value call(Value v) {
+            return item == v.getValue() || (item != null && item.equals(v.getValue()))
+                    ? TerminateWithValue.TRUE
+                    : IgnoreValue.INSTANCE;
         }
     }
 
@@ -228,6 +261,21 @@ public class StreamingResultSet {
         }
     }
 
+    private static class Inject<R> extends Fn {
+        private Closure<R> fn;
+        private R accu;
+
+        public Inject(R zero, Closure<R> fn) {
+            this.accu = zero;
+            this.fn = fn;
+        }
+
+        @Override public Value call(Value v) {
+            accu = fn.call(accu, v.getValue());
+            return apply(new SingleValue(accu));
+        }
+    }
+
     private static class Head extends Fn {
 
         @Override public Value call(Value v) {
@@ -251,6 +299,17 @@ public class StreamingResultSet {
         public boolean terminate() { return false; }
 
         public boolean ignore() { return false; }
+    }
+
+    private static class SingleValue extends Value {
+        public SingleValue(Object val) { super(val); }
+
+        @Override public void exportTo(List<Object> xs) {
+            if (xs.isEmpty())
+                xs.add(getValue());
+            else
+                xs.set(0, getValue());
+        }
     }
 
     private static class FlatValue extends Value {
@@ -329,6 +388,8 @@ public class StreamingResultSet {
      */
     public StreamingResultSet findAll(Closure<Boolean> p) { return next(new FindAll(p)); }
 
+    public StreamingResultSet findResults(Closure<?> p) { return next(new FindResults(p)); }
+
     /**
      * Finds the first element matching the given Closure predicate.
      * The result is equivalent to {@code findAll} operation followed by {@code head}.
@@ -341,6 +402,13 @@ public class StreamingResultSet {
             return DefaultGroovyMethods.find(values, p);
 
         return terminate(new Find(p), null);
+    }
+
+    public Object findResult(Closure<?> p) throws SQLException { // todo better parameter name
+        if (values != null)
+            return DefaultGroovyMethods.findResult(values, p);
+
+        return terminate(new FindResult(p), null);
     }
 
     /**
@@ -384,6 +452,10 @@ public class StreamingResultSet {
      * @return new {@code StreamingResultSet} instance
      */
     public StreamingResultSet dropWhile(Closure<Boolean> p) { return next(new DropWhile(p)); }
+
+    public <T> T inject(T zero, Closure<T> fn) throws SQLException {
+        return (T) terminate(new Inject<T>(zero, fn), zero);
+    }
 
     /**
      * Selects the first element of the stream.
@@ -497,9 +569,23 @@ public class StreamingResultSet {
      */
     public boolean containsAll(Collection<?> items) throws SQLException {
         if (values != null)
-            values.containsAll(items);
+            return values.containsAll(items);
 
         return terminateBool(new ContainsAll(items), Boolean.FALSE);
+    }
+
+    /**
+     * Checks if the stream contains the given item.
+     *
+     * @param item    item to be checked for containment in this stream.
+     * @return true if the stream contains the given item.
+     * @throws SQLException if database access error occurs
+     */
+    public boolean contains(Object item) throws SQLException {
+        if (values != null)
+            return values.contains(item);
+
+        return terminateBool(new Contains(item), Boolean.FALSE);
     }
 
     /**
