@@ -126,6 +126,73 @@ class StreamingResultSetSpec extends Specification {
         force(toVals(input), fn) == expected
     }
 
+    def 'test findResults'(List<Integer> input, List<String> expected) {
+        given:
+        def fn = calc.andThen(new SRR.FindResults({ it < 4 ? it as String : null }))
+
+        expect:
+        force(toVals(input), fn) == expected
+
+        where:
+        input | expected
+        1..10 | ['1', '2', '3']
+        [1]   | ['1']
+        5..10 | []
+        ['x'] | []
+        []    | []
+    }
+
+    def 'test take.findResults.collect'(List<Integer> input, List<Integer> expected) {
+        given:
+        def fn = calc.andThen(new SRR.Take(5))
+                     .andThen(new SRR.FindResults({ it < 7 ? it as String : null }))
+                     .andThen(new SRR.Collect<Integer>({ it as Integer }))
+
+        expect:
+        force(toVals(input), fn) == expected
+
+        where:
+        input | expected
+        1..10 | 1..5
+        2..10 | 2..6
+        1..2  | 1..2
+        5..15 | 5..6
+        7..10 | []
+        []    | []
+    }
+
+    def 'test inject'() {
+        given:
+        def fn = calc.andThen(new SRR.Inject(zero, { acc, value -> acc + value }))
+
+        expect:
+        force(toVals(input), fn) == expected
+
+        where:
+        zero | input      | expected
+        0    | 1..5       | [15]
+        1    | 1..5       | [16]
+        1    | [1]        | [2]
+        1    | []         | [] // should be 1 but we're not using `terminate` in this test
+        'a'  | ['b', 'c'] | ['abc']
+    }
+
+    def 'test collect.take.inject'() {
+        given:
+        def fn = calc.andThen(new SRR.Collect<Integer>({ it as Integer }))
+                     .andThen(new SRR.Take(3))
+                     .andThen(new SRR.Inject<Integer>(zero, { acc, value -> acc + value }))
+
+        expect:
+        force(toVals(input), fn) == expected
+
+        where:
+        zero | input                | expected
+        0    | ['1', '2', '3', '4'] | [6]
+        1    | ['1', '2', '3', '4'] | [7]
+        0    | ['1', '2']           | [3]
+    }
+
     def 'test each'() {
         given:
         def lst = []
@@ -256,6 +323,21 @@ class StreamingResultSetSpec extends Specification {
         force(toVals(input), fn) == expected
     }
 
+    def 'test findResult'(List<Integer> input, List<String> expected) {
+        given:
+        def fn = calc.andThen(new SRR.FindResult({ it == 5 ? 'foo' : null }))
+
+        expect:
+        force(toVals(input), fn) == expected
+
+        where:
+        input | expected
+        1..10 | ['foo']
+        [5]   | ['foo']
+        1..4  | [] // should be null
+        []    | [] // should be null
+    }
+
     @Unroll
     def 'test any'(List<Integer> input, List<Boolean> expected) {
         given:
@@ -299,7 +381,7 @@ class StreamingResultSetSpec extends Specification {
         [1, 1, 1]  | [false]
     }
 
-    def 'containsAll'(List<Integer> input, List<Integer> contains, List<Boolean> expected) {
+    def 'test containsAll'(List<Integer> input, List<Integer> contains, List<Boolean> expected) {
         given:
         def fn = calc.andThen(new SRR.ContainsAll(contains))
 
@@ -316,6 +398,24 @@ class StreamingResultSetSpec extends Specification {
         [1, 2, 3]  | [1,2,4]  | []
         [1, 2, 3]  | [4]      | []
         [1, 2, 3]  | []       | [true]
+    }
+
+    def 'test contains'(List<Integer> input, Object item, List<Boolean> expected) {
+        given:
+        def fn = calc.andThen(new SRR.Contains(item))
+
+        expect:
+        force(toVals(input), fn) == expected
+
+        where:
+        input  | item  || expected
+        1..10  | 1     || [true]
+        1..10  | 5     || [true]
+        1..10  | 10    || [true]
+        1..10  | 11    || []
+        1..10  | 'foo' || []
+        1..10  | null  || []
+        [null] | null  || [true]
     }
 
     private static List<SRR.Value> toVals(List xs) { xs.collect { new SRR.Value(it) }}
